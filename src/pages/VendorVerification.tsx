@@ -11,7 +11,7 @@ import { Building2, FileCheck2, FileText, CheckCircle2, Factory, Stamp, Landmark
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export default function VendorVerification() {
-  const { currentUser, login } = useAuth();
+  const { currentUser, submitVerification } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -23,11 +23,11 @@ export default function VendorVerification() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Mocking an async submission
+    // Call store function to update status
     setTimeout(() => {
+      submitVerification();
       setIsSubmitting(false);
       setIsSubmitted(true);
-      // We would ideally update the user's status in the store to "verified" here
     }, 1500);
   };
 

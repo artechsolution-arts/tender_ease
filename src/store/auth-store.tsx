@@ -51,6 +51,8 @@ interface AuthCtx {
   login: (email: string, password: string) => DemoUser | null;
   logout: () => void;
   registerVendor: (account: Omit<DemoAccount, "role" | "vendorId">) => void;
+  updateVerificationStep: (step: number) => void;
+  submitVerification: () => void;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -108,12 +110,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccounts((prev) => [...prev, newVendor]);
   }, []);
 
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("currentUser");
+  };
+
+  const updateVerificationStep = (step: number) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, verificationStep: step as 1 | 2 | 3 | 4 | 5 };
+    setCurrentUser(updated);
+    setAccounts(prev => prev.map(a => a.email === currentUser.email ? { ...a, verificationStep: step as 1 | 2 | 3 | 4 | 5 } : a));
+    localStorage.setItem("currentUser", JSON.stringify(updated));
+  };
+
+  const submitVerification = () => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, isVerificationPending: true, verificationStep: 4 as 1 | 2 | 3 | 4 | 5 };
+    setCurrentUser(updated);
+    setAccounts(prev => prev.map(a => a.email === currentUser.email ? { ...a, isVerificationPending: true, verificationStep: 4 as 1 | 2 | 3 | 4 | 5 } : a));
+    localStorage.setItem("currentUser", JSON.stringify(updated));
+  };
+
   const publicAccounts = useMemo(
     () => accounts.map(({ email, password, role, organization }) => ({ email, password, role, organization })),
     [accounts],
   );
 
-  return <Ctx.Provider value={{ currentUser, demoAccounts: publicAccounts, login, logout, registerVendor }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ currentUser, demoAccounts: publicAccounts, login, logout, registerVendor, updateVerificationStep, submitVerification }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
