@@ -60,11 +60,21 @@ const Index = () => {
           <div className="overflow-hidden rounded-sm border border-border bg-card shadow-sm">
             <div className="bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_categories")}</div>
             <ul className="divide-y divide-border text-xs">
-              {[["Works (Civil)", 86], ["Goods / Supplies", 54], ["Services", 42], ["Consultancy", 23], ["IT / e-Gov", 18], ["Auction / Sale", 9]].map(([label, count]) => (
-                <li key={label as string}>
-                  <Link to="/tenders" className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground/90 hover:bg-secondary hover:text-primary">
+              {([
+                ["Works (Civil)",   "Civil Works"],
+                ["Goods / Supplies","Goods / Supplies"],
+                ["Services",        "Services"],
+                ["Consultancy",     "Consultancy"],
+                ["IT / e-Gov",      "IT / e-Gov"],
+                ["Auction / Sale",  "Auction / Sale"],
+              ] as [string, string][]).map(([label, categoryKey]) => (
+                <li key={label}>
+                  <Link
+                    to={`/tenders?category=${encodeURIComponent(categoryKey)}`}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground/90 hover:bg-secondary hover:text-primary"
+                  >
                     <span>{label}</span>
-                    <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-semibold text-primary">{count}</span>
+                    <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-semibold text-primary">→</span>
                   </Link>
                 </li>
               ))}

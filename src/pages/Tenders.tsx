@@ -14,9 +14,11 @@ import {
 import { TenderStatusBadge } from "@/components/admin/TenderStatusBadge";
 import { TenderFormDialog } from "@/components/admin/TenderFormDialog";
 import { useAdmin, fmtINR, fmtDate, fmtDateTime, nextStatuses, TENDER_STATUSES, type Tender, type TenderStatus } from "@/store/admin-store";
-import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award } from "lucide-react";
+import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/useT";
+
+const CATEGORIES = ["All", "Civil Works", "Goods / Supplies", "Services", "IT / e-Gov", "Consultancy", "Healthcare", "Auction / Sale"];
 
 export default function Tenders() {
   const { tenders, vendors, changeStatus, deleteTender } = useAdmin();
@@ -24,6 +26,7 @@ export default function Tenders() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [statusFilter, setStatusFilter] = useState<TenderStatus | "All">("All");
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "All");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Tender | undefined>();
   const [viewing, setViewing] = useState<Tender | undefined>();
@@ -42,9 +45,10 @@ export default function Tenders() {
           || t.department.toLowerCase().includes(q)
         ));
       const matchS = statusFilter === "All" || t.status === statusFilter;
-      return matchQ && matchS;
+      const matchC = categoryFilter === "All" || t.category === categoryFilter;
+      return matchQ && matchS && matchC;
     });
-  }, [tenders, query, statusFilter]);
+  }, [tenders, query, statusFilter, categoryFilter]);
 
   const handleAdvance = (t: Tender) => {
     const nxt = nextStatuses(t.status);
@@ -85,6 +89,12 @@ export default function Tenders() {
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={T("tenders_search")} className="h-8 pl-8 sm:w-64" />
             </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-8 sm:w-44"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c === "All" ? "All Categories" : c}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TenderStatus | "All")}>
               <SelectTrigger className="h-8 sm:w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -94,6 +104,15 @@ export default function Tenders() {
             </Select>
           </div>
         </div>
+        {categoryFilter !== "All" && (
+          <div className="flex items-center gap-2 border-b border-border bg-accent/5 px-3 py-2">
+            <Tag className="h-3.5 w-3.5 text-accent" />
+            <span className="text-xs font-medium text-accent">Filtered by category: <strong>{categoryFilter}</strong></span>
+            <button onClick={() => setCategoryFilter("All")} className="ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-secondary hover:text-foreground">
+              <X className="h-3 w-3" /> Clear filter
+            </button>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <Table>
