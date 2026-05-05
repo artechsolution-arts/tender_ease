@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState, useEffect } from "react";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 
 export type TenderStatus = "Draft" | "Published" | "Closed" | "Evaluated" | "Awarded";
@@ -255,7 +256,12 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       eligibleVendorIds: tender.eligibleVendorIds,
       status: "Draft",
       documents: tender.documents,
-    }).then(() => fetchTenders()).catch(() => {});
+    }).then(() => fetchTenders()).catch((err) => {
+      toast.error("Failed to save tender to database", {
+        description: err?.response?.data?.detail ?? "Server error. The tender may not have been saved.",
+      });
+      fetchTenders();
+    });
 
     pushNotification({
       title: `New tender drafted: ${t.name}`,
@@ -293,7 +299,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       startDate: patch.startDate,
       endDate: patch.endDate,
       eligibleVendorIds: patch.eligibleVendorIds,
-    }).then(() => fetchTenders()).catch(() => {});
+    }).then(() => fetchTenders()).catch((err) => {
+      toast.error("Failed to update tender", { description: err?.response?.data?.detail ?? "Server error." });
+      fetchTenders();
+    });
   }, [pushNotification, queueEmails, vendorEmails, fetchTenders]);
 
   const changeStatus: AdminCtx["changeStatus"] = useCallback((id, next, awardedVendorId) => {
@@ -332,7 +341,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     apiClient.patch(`/tenders/${id}/status`, {
       status: next,
       ...(awardedVendorId ? { awardedVendorId } : {}),
-    }).then(() => fetchTenders()).catch(() => {});
+    }).then(() => fetchTenders()).catch((err) => {
+      toast.error("Failed to update tender status", { description: err?.response?.data?.detail ?? "Server error." });
+      fetchTenders();
+    });
   }, [pushNotification, queueEmails, vendors, vendorEmails, fetchTenders]);
 
   const deleteTender = useCallback((id: string) => {

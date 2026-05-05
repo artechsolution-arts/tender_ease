@@ -17,7 +17,7 @@ interface AuthCtx {
   currentUser: DemoUser | null;
   login: (email: string, password: string) => Promise<DemoUser | null>;
   logout: () => void;
-  registerVendor: (account: { email: string; password: string; name: string; organization: string }) => Promise<void>;
+  registerVendor: (account: { company: string; contact: string; phone: string; email: string; password: string }) => Promise<void>;
   updateVerificationStep: (step: number) => void;
   submitVerification: () => void;
 }
@@ -76,12 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   }, []);
 
-  const registerVendor = useCallback(async (account: { email: string; password: string; name: string; organization: string }) => {
+  const registerVendor = useCallback(async (account: { company: string; contact: string; phone: string; email: string; password: string }) => {
     const res = await apiClient.post<{ accessToken: string; refreshToken: string; user: any }>("/auth/register-vendor", {
+      company: account.company,
+      contact: account.contact,
+      phone: account.phone,
       email: account.email,
       password: account.password,
-      name: account.name,
-      organization: account.organization,
     });
     const { accessToken, refreshToken, user } = res.data;
     localStorage.setItem("accessToken", accessToken);

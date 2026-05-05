@@ -30,6 +30,7 @@ class RegisterVendorRequest(BaseModel):
     contact: str
     email: str
     phone: str
+    password: str
 
 
 class VerificationStepRequest(BaseModel):
@@ -106,21 +107,39 @@ def me(current_user: User = Depends(get_current_user)):
 
 @router.post("/register-vendor")
 def register_vendor(body: RegisterVendorRequest, db: Session = Depends(get_db)):
-    existing = db.query(PendingVendor).filter(PendingVendor.email == body.email).first()
-    if existing:
+    if db.query(User).filter(User.email == body.email).first():
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+    if db.query(PendingVendor).filter(PendingVendor.email == body.email).first():
         raise HTTPException(status_code=400, detail="Application already submitted for this email")
+
     pv = PendingVendor(company=body.company, contact=body.contact, email=body.email, phone=body.phone)
     db.add(pv)
+    db.flush()
+
+    user = User(
+        email=body.email,
+        password_hash=hash_password(body.password),
+        role=RoleEnum.VENDOR,
+        name=body.contact,
+        organization=body.company,
+        vendor_id=pv.id,
+        is_verified=False,
+    )
+    db.add(user)
+    db.flush()
+
+    raw_refresh = create_refresh_token()
+    db.add(RefreshToken(token=raw_refresh, user_id=user.id, expires_at=create_refresh_token_expiry()))
     db.commit()
 
-    # Notify all admin users by email (background, non-blocking)
     admin_emails = [u.email for u in db.query(User).filter(User.role == RoleEnum.ADMIN).all()]
     send_new_vendor_registration_notification(
         admin_emails,
         vendor={"company": body.company, "contact": body.contact, "email": body.email, "phone": body.phone},
     )
 
-    return {"id": pv.id, "message": "Application submitted. You will be contacted for verification."}
+    access_token = create_access_token(user.id, user.email, user.role.value, user.vendor_id)
+    return {"accessToken": access_token, "refreshToken": raw_refresh, "user": _user_dict(user)}
 
 
 @router.patch("/verification-step")

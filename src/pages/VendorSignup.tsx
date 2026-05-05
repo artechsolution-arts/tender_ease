@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "@/store/auth-store";
-import { useAdmin } from "@/store/admin-store";
 import { Building2, CheckCircle2, UserCheck, FileText, ShieldAlert, Factory, Stamp, Landmark, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 export default function VendorSignup() {
   const navigate = useNavigate();
   const { registerVendor } = useAuth();
-  const { addPendingVendor } = useAdmin();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Form states for progress
@@ -25,29 +24,25 @@ export default function VendorSignup() {
     document.title = "Vendor Registration — AP e-Procurement";
   }, []);
 
-  const handleQuickSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleQuickSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const company = fd.get("companyName") as string;
+    const contact = fd.get("contactPerson") as string;
+    const phone = fd.get("mobile") as string;
     const email = fd.get("email") as string;
-    const organization = fd.get("companyName") as string;
-    const name = fd.get("contactPerson") as string;
+    const password = fd.get("password") as string;
 
-    registerVendor({
-      email,
-      password: fd.get("password") as string,
-      name,
-      organization,
-    });
-
-    addPendingVendor({
-      id: `VEN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      company: organization,
-      contact: name,
-      email: email,
-      phone: "—",
-    });
-
-    setStep(2);
+    setIsSubmitting(true);
+    try {
+      await registerVendor({ company, contact, phone, email, password });
+      setStep(2);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? "Registration failed. Please try again.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFullSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -396,7 +391,9 @@ export default function VendorSignup() {
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-border">
                   <Button type="button" variant="outline" onClick={() => navigate("/login")}>Cancel</Button>
-                  <Button type="submit" className="rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">Submit Request</Button>
+                  <Button type="submit" disabled={isSubmitting} className="rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
+                    {isSubmitting ? "Submitting..." : "Submit Request"}
+                  </Button>
                 </div>
               </form>
             </>
