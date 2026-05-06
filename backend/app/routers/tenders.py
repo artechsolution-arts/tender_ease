@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import func, extract, case, Integer
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import (
@@ -18,6 +19,48 @@ from app.services.email_service import (
 )
 
 router = APIRouter()
+
+
+@router.get("/stats")
+def get_tender_stats(db: Session = Depends(get_db)):
+    """Public endpoint — no auth required."""
+    today = date.today()
+
+    active_count = db.query(func.count(Tender.id)).filter(
+        Tender.status == TenderStatusEnum.Published
+    ).scalar() or 0
+
+    closing_today = db.query(func.count(Tender.id)).filter(
+        Tender.status == TenderStatusEnum.Published,
+        func.date(Tender.end_date) == today,
+    ).scalar() or 0
+
+    yr_col  = func.cast(extract("year",  Tender.created_at), Integer)
+    mon_col = func.cast(extract("month", Tender.created_at), Integer)
+
+    rows = (
+        db.query(
+            yr_col.label("yr"),
+            mon_col.label("mon"),
+            func.count(Tender.id).label("count"),
+            func.sum(Tender.estimated_value).label("value"),
+        )
+        .group_by(yr_col, mon_col)
+        .order_by(yr_col, mon_col)
+        .all()
+    )
+
+    MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    by_year = [
+        {
+            "year": f"{MONTH_ABBR[r.mon - 1]} {str(r.yr)[2:]}",
+            "count": r.count,
+            "value": round(r.value or 0, 2),
+        }
+        for r in rows
+    ]
+
+    return {"byYear": by_year, "active": active_count, "closingToday": closing_today}
 
 
 def _get_vendor_emails(db: Session, vendor_ids: list[str]) -> list[tuple[str, str]]:
