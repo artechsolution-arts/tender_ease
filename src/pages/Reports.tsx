@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart3, Download, FileText, Filter, Printer, TrendingUp, Wallet, Users, FileSpreadsheet, FileBarChart, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useT } from "@/lib/useT";
+import { printAsPdf } from "@/lib/printPdf";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const PIE = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--info))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--destructive))"];
@@ -71,6 +72,101 @@ export default function Reports() {
     }));
   }, []);
 
+  const handlePrintMIS = () => {
+    const catRows = byCategory.map(r =>
+      `<tr><td>${r.name}</td><td style="text-align:right">${r.count}</td><td style="text-align:right;font-family:monospace">${fmtINR(r.value)}</td></tr>`
+    ).join("");
+    const deptRows = byDept.map(r =>
+      `<tr><td>${r.name}</td><td style="text-align:right">${r.count}</td><td style="text-align:right;font-family:monospace">${fmtINR(r.value)}</td></tr>`
+    ).join("");
+    const tenderRows = filtered.map(t =>
+      `<tr><td style="font-family:monospace;font-size:9pt">${t.id}</td><td>${t.name}</td><td>${t.department}</td><td>${t.category}</td><td style="text-align:right;font-family:monospace">${fmtINR(t.estimatedValue)}</td><td>${fmtDate(t.endDate)}</td><td>${t.status}</td></tr>`
+    ).join("");
+
+    const bodyHtml = `
+      <div class="doc-title">MIS Report — Procurement Summary</div>
+      <div class="kv"><span class="k">Period:</span>${period === "fy" ? "FY 2025-26" : period === "quarter" ? "Current Quarter" : "Current Month"}</div>
+      <div class="kv"><span class="k">Department Filter:</span>${department === "all" ? "All Departments" : department}</div>
+      <div class="kv"><span class="k">Total NITs:</span>${filtered.length}</div>
+      <div class="kv"><span class="k">Estimated Value:</span>${fmtINR(filtered.reduce((s, t) => s + t.estimatedValue, 0))}</div>
+      <div class="kv"><span class="k">Contracts Awarded:</span>${awarded.length}</div>
+      <div class="kv"><span class="k">Award Success Rate:</span>${successRate}%</div>
+
+      <div class="section-head">By Category</div>
+      <table><thead><tr><th>Category</th><th>NITs</th><th>Value</th></tr></thead><tbody>${catRows}</tbody></table>
+
+      <div class="section-head">By Department</div>
+      <table><thead><tr><th>Department</th><th>NITs</th><th>Value</th></tr></thead><tbody>${deptRows}</tbody></table>
+
+      <div class="section-head">Tender Register</div>
+      <table>
+        <thead><tr><th>ID</th><th>Tender</th><th>Department</th><th>Category</th><th>Value</th><th>Closing</th><th>Status</th></tr></thead>
+        <tbody>${tenderRows}</tbody>
+      </table>
+
+      <div class="stamp">
+        <p>Prepared by: MIS Reporting Module — AP e-Procurement v4.2.1</p>
+        <p style="margin-top:40px;border-top:1px solid #bbb;padding-top:8px">Authorised Signatory</p>
+        <p>Date: _______________________</p>
+      </div>
+    `;
+    printAsPdf("MIS Procurement Report", bodyHtml);
+    toast({ title: "Print dialog opened", description: "Choose 'Save as PDF' to download the report." });
+  };
+
+  const handleStandardReportPdf = (r: typeof STANDARD_REPORTS[number]) => {
+    let bodyHtml = `<div class="doc-title">${r.title}</div><div class="kv"><span class="k">Report ID:</span>${r.id}</div><div class="kv"><span class="k">Department:</span>${department === "all" ? "All Departments" : department}</div><div class="kv"><span class="k">Period:</span>FY 2025-26</div>`;
+
+    if (r.id === "R-01") {
+      const rows = filtered.map(t =>
+        `<tr><td style="font-family:monospace;font-size:9pt">${t.id}</td><td>${t.name}</td><td>${t.department}</td><td style="text-align:right;font-family:monospace">${fmtINR(t.estimatedValue)}</td><td>${fmtDate(t.endDate)}</td><td>${t.status}</td></tr>`
+      ).join("");
+      bodyHtml += `<div class="section-head">NIT Publishing Register (GFR-2017 Form-1)</div>
+      <table><thead><tr><th>NIT No.</th><th>Title</th><th>Department</th><th>Value</th><th>Closing Date</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else if (r.id === "R-02") {
+      bodyHtml += `<div class="section-head">Bid Evaluation Summary (CVC Format)</div>
+      <p style="font-size:9pt;color:#555">Navigate to Bid Evaluation → select a tender → Export CER (PDF) for the full Comparative Evaluation Report per tender.</p>
+      <div class="kv"><span class="k">Total Tenders Evaluated:</span>${filtered.filter(t => ["Evaluated","Awarded"].includes(t.status)).length}</div>
+      <div class="kv"><span class="k">Contracts Awarded:</span>${awarded.length}</div>
+      <div class="kv"><span class="k">Award Success Rate:</span>${successRate}%</div>`;
+    } else if (r.id === "R-03") {
+      const rows = awarded.map(t =>
+        `<tr><td style="font-family:monospace;font-size:9pt">${t.id}</td><td>${t.name}</td><td>${t.department}</td><td style="text-align:right;font-family:monospace">${fmtINR(t.estimatedValue)}</td><td>${fmtDate(t.endDate)}</td><td>Awarded</td></tr>`
+      ).join("");
+      bodyHtml += `<div class="section-head">Award & LoA Register</div>
+      <table><thead><tr><th>NIT No.</th><th>Tender</th><th>Department</th><th>Contract Value</th><th>Award Date</th><th>Status</th></tr></thead><tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#888">No awarded contracts in selected filter</td></tr>'}</tbody></table>`;
+    } else if (r.id === "R-04") {
+      const vendorRows = vendors.slice(0, 20).map(v =>
+        `<tr><td style="font-family:monospace;font-size:9pt">${v.id}</td><td>${v.companyName}</td><td>${v.category}</td><td style="text-align:right">${v.completedTenders}</td><td style="text-align:right">${v.pastPerformance}%</td><td>${v.blacklisted ? '<span style="color:#c0392b">Blacklisted</span>' : "Active"}</td></tr>`
+      ).join("");
+      bodyHtml += `<div class="section-head">Vendor Participation Matrix</div>
+      <div class="kv"><span class="k">Total Registered Vendors:</span>${vendors.length}</div>
+      <div class="kv"><span class="k">Active Vendors:</span>${vendors.filter(v => !v.blacklisted).length}</div>
+      <div class="kv"><span class="k">Blacklisted Vendors:</span>${vendors.filter(v => v.blacklisted).length}</div>
+      <table><thead><tr><th>Vendor ID</th><th>Company</th><th>Category</th><th>Completed</th><th>Performance</th><th>Status</th></tr></thead><tbody>${vendorRows}</tbody></table>`;
+    } else if (r.id === "R-05") {
+      const monthRows = monthly.map(m =>
+        `<tr><td>${m.month} 2025</td><td style="text-align:right">${m.published}</td><td style="text-align:right">${m.awarded}</td><td style="text-align:right">${Math.round(m.awarded / m.published * 100)}%</td></tr>`
+      ).join("");
+      bodyHtml += `<div class="section-head">Procurement Cycle Time Analysis</div>
+      <table><thead><tr><th>Month</th><th>NITs Published</th><th>Awarded</th><th>Award Rate</th></tr></thead><tbody>${monthRows}</tbody></table>
+      <div class="kv" style="margin-top:12px"><span class="k">Avg. NIT-to-LoA (Civil Works):</span>42 days</div>
+      <div class="kv"><span class="k">Avg. NIT-to-LoA (IT & Telecom):</span>38 days</div>
+      <div class="kv"><span class="k">Avg. NIT-to-LoA (Services):</span>29 days</div>`;
+    } else if (r.id === "R-06") {
+      const rows = awarded.map(t => {
+        const saving = t.estimatedValue - t.estimatedValue * 0.94;
+        return `<tr><td style="font-family:monospace;font-size:9pt">${t.id}</td><td>${t.name}</td><td style="text-align:right;font-family:monospace">${fmtINR(t.estimatedValue)}</td><td style="text-align:right;font-family:monospace">${fmtINR(t.estimatedValue * 0.94)}</td><td style="text-align:right;color:#27ae60">${fmtINR(saving)}</td><td style="text-align:right;color:#27ae60">-6.0%</td></tr>`;
+      }).join("");
+      bodyHtml += `<div class="section-head">Estimated vs Awarded Value Variance</div>
+      <table><thead><tr><th>NIT No.</th><th>Tender</th><th>Estimated</th><th>Awarded</th><th>Savings</th><th>Variance</th></tr></thead><tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#888">No awarded contracts found</td></tr>'}</tbody></table>`;
+    }
+
+    bodyHtml += `<div class="stamp"><p>Prepared by: AP e-Procurement MIS Engine v4.2.1</p><p style="margin-top:40px;border-top:1px solid #bbb;padding-top:8px">Authorised Signatory</p><p>Date: _______________________</p></div>`;
+    printAsPdf(r.title, bodyHtml);
+    toast({ title: "Print dialog opened", description: "Choose 'Save as PDF' to download." });
+  };
+
   const downloadCsv = (rows: Record<string, unknown>[], filename: string) => {
     if (!rows.length) {
       toast({ title: "No data to export", description: "Adjust filters or wait for data to load.", variant: "destructive" });
@@ -105,7 +201,7 @@ export default function Reports() {
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("nav_reports") }]}
       actions={
         <>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary" onClick={handlePrintMIS}>
             <Printer className="h-3.5 w-3.5" /> Print
           </Button>
           <Button size="sm" className="h-8 gap-1.5 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90"
@@ -266,7 +362,7 @@ export default function Reports() {
                     onClick={() => downloadCsv(filtered.map((t) => ({ id: t.id, name: t.name, dept: t.department, value: t.estimatedValue, status: t.status })), `${r.id}.csv`)}>
                     <Download className="h-3 w-3" /> CSV
                   </Button>
-                  <Button size="sm" className="h-7 flex-1 gap-1 rounded-sm bg-primary text-[11px] text-primary-foreground hover:bg-primary/90" onClick={() => window.print()}>
+                  <Button size="sm" className="h-7 flex-1 gap-1 rounded-sm bg-primary text-[11px] text-primary-foreground hover:bg-primary/90" onClick={() => handleStandardReportPdf(r)}>
                     <FileText className="h-3 w-3" /> PDF
                   </Button>
                 </div>

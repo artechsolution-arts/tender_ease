@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAdmin, fmtINR, fmtDate } from "@/store/admin-store";
 import {
   Sparkles, TrendingUp, TrendingDown, AlertTriangle, ShieldCheck, Brain, Target,
@@ -17,6 +19,8 @@ import {
   LineChart, Line,
 } from "recharts";
 import { useT } from "@/lib/useT";
+import { printAsPdf } from "@/lib/printPdf";
+import { toast } from "sonner";
 
 type Risk = "Low" | "Medium" | "High";
 
@@ -39,7 +43,10 @@ const RISK_TONE: Record<Risk, string> = {
 export default function AiInsights() {
   const { tenders, vendors } = useAdmin();
   const T = useT();
-  const [refreshedAt] = useState(new Date());
+  const navigate = useNavigate();
+  const [refreshedAt, setRefreshedAt] = useState(new Date());
+  const [selectedAnomaly, setSelectedAnomaly] = useState<AnomalyFlag | null>(null);
+  const [appliedRecs, setAppliedRecs] = useState<Set<string>>(new Set());
 
   const insights = useMemo(() => {
     const total = tenders.length;
@@ -134,6 +141,57 @@ export default function AiInsights() {
     { title: "Bundle Q2 medicine indents into rate contract", impact: "≈ ₹38L estimated savings", icon: Target },
   ];
 
+  const handleExportBriefing = () => {
+    const anomalyRows = anomalies.map(a =>
+      `<tr><td style="font-family:monospace;font-size:9pt">${a.id}</td><td>${a.tenderId}</td><td>${a.type}</td><td style="color:${a.severity==="High"?"#c0392b":a.severity==="Medium"?"#e67e22":"#27ae60"}">${a.severity}</td><td>${a.description}</td><td style="font-size:9pt;color:#555">${a.recommendation}</td></tr>`
+    ).join("");
+    const vendorRows = vendors.filter(v=>!v.blacklisted).sort((a,b)=>b.pastPerformance-a.pastPerformance).slice(0,5).map(v=>
+      `<tr><td>${v.companyName}</td><td style="font-family:monospace;font-size:9pt">${v.id}</td><td>${v.category}</td><td style="text-align:right">${v.completedTenders}</td><td style="text-align:right">${v.pastPerformance}%</td></tr>`
+    ).join("");
+    const bodyHtml = `
+      <div class="doc-title">AI Executive Briefing — Procurement Intelligence</div>
+      <div class="kv"><span class="k">Model:</span>ProcureAI v3.2</div>
+      <div class="kv"><span class="k">Generated:</span>${refreshedAt.toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}</div>
+      <div class="kv"><span class="k">Health Score:</span>86 / 100</div>
+      <div class="kv"><span class="k">Risk Index:</span>Low</div>
+      <div class="kv"><span class="k">Confidence:</span>92%</div>
+      <div class="section-head">Executive Summary</div>
+      <div class="kv"><span class="k">Total Tenders:</span>${insights.total}</div>
+      <div class="kv"><span class="k">Total Value:</span>${fmtINR(insights.totalValue)}</div>
+      <div class="kv"><span class="k">Estimated Savings:</span>${fmtINR(insights.savingsEstimate)} (7.4% under estimate)</div>
+      <div class="kv"><span class="k">Contracts Awarded:</span>${insights.awarded}</div>
+      <div class="kv"><span class="k">Avg. Bid Cycle:</span>${insights.cycleAvg} days (−2.4 days QoQ)</div>
+      <div class="kv"><span class="k">Compliance Score:</span>94%</div>
+      <div class="kv"><span class="k">Open Risk Flags:</span>${insights.fraudFlags} (2 High · 1 Medium)</div>
+      <div class="section-head">Detected Anomalies</div>
+      <table><thead><tr><th>ID</th><th>Reference</th><th>Type</th><th>Severity</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>${anomalyRows}</tbody></table>
+      <div class="section-head">Top Performing Vendors (AI Scored)</div>
+      <table><thead><tr><th>Company</th><th>Vendor ID</th><th>Category</th><th>Tenders</th><th>Performance</th></tr></thead><tbody>${vendorRows}</tbody></table>
+      <div class="section-head">Key Recommendations</div>
+      ${recommendations.map((r,i)=>`<div class="kv"><span class="k">R-${i+1}:</span>${r.title} — <strong>${r.impact}</strong></div>`).join("")}
+      <div class="stamp"><p>ProcureAI v3.2 · AP e-Procurement Portal · Confidence 90–95%</p><p style="font-size:8pt;color:#888;margin-top:6px">Not a substitute for official audit or CVC inquiry.</p></div>
+    `;
+    printAsPdf("AI Executive Briefing", bodyHtml);
+    toast.success("Print dialog opened — choose 'Save as PDF'");
+  };
+
+  const handleRerunAnalysis = () => {
+    setRefreshedAt(new Date());
+    toast.success("Analysis refreshed", { description: "ProcureAI v3.2 re-scored all tenders and vendors." });
+  };
+
+  const handleApplyRec = (title: string) => {
+    setAppliedRecs(prev => new Set([...prev, title]));
+    toast.success("Recommendation queued", { description: `"${title}" has been added to the officer's action list.` });
+  };
+
+  const INVESTIGATE_ROUTES: Record<string, string> = {
+    "AN-01": "/bid-evaluation",
+    "AN-02": "/tenders",
+    "AN-03": "/vendors",
+    "AN-04": "/bid-evaluation",
+  };
+
   const forecasts = [
     { label: "Q2 FY26 Tender Volume", value: "27 NITs", trend: "+12.5%", up: true },
     { label: "Projected Award Value", value: fmtINR(620000000), trend: "+9.1%", up: true },
@@ -150,10 +208,10 @@ export default function AiInsights() {
           <Badge variant="outline" className="border-info/40 bg-info/10 text-info">
             <Activity className="mr-1 h-3 w-3" /> Model: ProcureAI v3.2
           </Badge>
-          <Button size="sm" variant="outline" className="gap-1.5">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExportBriefing}>
             <FileSearch className="h-3.5 w-3.5" /> Export Briefing
           </Button>
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5" onClick={handleRerunAnalysis}>
             <Sparkles className="h-3.5 w-3.5" /> Re-run Analysis
           </Button>
         </>
@@ -245,7 +303,7 @@ export default function AiInsights() {
                         </p>
                       </TableCell>
                       <TableCell className="align-top text-right">
-                        <Button size="sm" variant="outline" className="gap-1 text-xs">
+                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setSelectedAnomaly(a)}>
                           Investigate <ArrowRight className="h-3 w-3" />
                         </Button>
                       </TableCell>
@@ -446,8 +504,14 @@ export default function AiInsights() {
                     <p className="text-sm font-semibold text-foreground">{r.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">Projected impact: <span className="font-semibold text-success">{r.impact}</span></p>
                   </div>
-                  <Button size="sm" variant="ghost" className="text-xs">
-                    Apply <ArrowRight className="ml-1 h-3 w-3" />
+                  <Button
+                    size="sm"
+                    variant={appliedRecs.has(r.title) ? "default" : "ghost"}
+                    className={`text-xs ${appliedRecs.has(r.title) ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
+                    onClick={() => handleApplyRec(r.title)}
+                    disabled={appliedRecs.has(r.title)}
+                  >
+                    {appliedRecs.has(r.title) ? <><CheckCircle2 className="mr-1 h-3 w-3" /> Applied</> : <>Apply <ArrowRight className="ml-1 h-3 w-3" /></>}
                   </Button>
                 </CardContent>
               </Card>
@@ -489,6 +553,45 @@ export default function AiInsights() {
         <BarChart3 className="h-3 w-3" />
         Insights generated by ProcureAI v3.2 · Trained on 4.2 yrs of AP procurement data · Confidence intervals 90–95% · Not a substitute for official audit.
       </p>
+
+      {/* Investigate anomaly dialog */}
+      <Dialog open={!!selectedAnomaly} onOpenChange={() => setSelectedAnomaly(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              {selectedAnomaly?.id} — {selectedAnomaly?.type}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAnomaly && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div><p className="text-muted-foreground">Reference</p><p className="font-mono font-semibold">{selectedAnomaly.tenderId}</p></div>
+                <div><p className="text-muted-foreground">Entity</p><p className="font-medium">{selectedAnomaly.tenderName}</p></div>
+                <div><p className="text-muted-foreground">Severity</p>
+                  <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold ${RISK_TONE[selectedAnomaly.severity]}`}>{selectedAnomaly.severity}</span>
+                </div>
+                <div><p className="text-muted-foreground">Type</p><p className="font-medium">{selectedAnomaly.type}</p></div>
+              </div>
+              <div className="rounded-sm border border-border bg-secondary/40 p-3">
+                <p className="mb-1 text-[11px] font-bold uppercase text-primary">AI Finding</p>
+                <p className="text-xs leading-relaxed">{selectedAnomaly.description}</p>
+              </div>
+              <div className="rounded-sm border border-accent/40 bg-accent/5 p-3">
+                <p className="mb-1 text-[11px] font-bold uppercase text-accent">Recommended Action</p>
+                <p className="text-xs leading-relaxed">{selectedAnomaly.recommendation}</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" size="sm" className="h-8 rounded-sm text-xs" onClick={() => setSelectedAnomaly(null)}>Dismiss</Button>
+                <Button size="sm" className="h-8 gap-1 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90"
+                  onClick={() => { setSelectedAnomaly(null); navigate(INVESTIGATE_ROUTES[selectedAnomaly.id] ?? "/compliance"); }}>
+                  <ArrowRight className="h-3.5 w-3.5" /> Go to {INVESTIGATE_ROUTES[selectedAnomaly.id] === "/vendors" ? "Vendors" : INVESTIGATE_ROUTES[selectedAnomaly.id] === "/tenders" ? "Tenders" : "Bid Evaluation"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

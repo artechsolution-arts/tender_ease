@@ -8,9 +8,12 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Trophy, FileCheck2, AlertTriangle, CheckCircle2, XCircle, Download, Gavel } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Sparkles, Trophy, FileCheck2, AlertTriangle, CheckCircle2, XCircle, Download, Gavel, Building2, Phone, Mail, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/useT";
+import { printAsPdf } from "@/lib/printPdf";
 
 interface Bid {
   vendorId: string;
@@ -54,17 +57,20 @@ function compositeScore(b: Bid, lowest: number) {
   return priceScore * 0.4 + b.technicalScore * 0.3 + b.pastPerformance * 0.2 + b.complianceScore * 0.1;
 }
 
+type RankedBid = Bid & { composite: number };
+
 export default function BidEvaluation() {
   const { tenders, vendors, changeStatus } = useAdmin();
   const T = useT();
   const evaluable = tenders.filter((t) => ["Closed", "Evaluated", "Published"].includes(t.status));
   const [selectedId, setSelectedId] = useState<string>(evaluable[0]?.id ?? tenders[0]?.id ?? "");
+  const [selectedBid, setSelectedBid] = useState<RankedBid | null>(null);
 
   const tender = tenders.find((t) => t.id === selectedId);
   const bids = useMemo(() => (tender ? generateBids(tender.id, tender.eligibleVendorIds, tender.estimatedValue, vendors) : []), [tender, vendors]);
   const lowestBid = bids.length ? Math.min(...bids.map((b) => b.bidAmount)) : 0;
 
-  const ranked = useMemo(() => {
+  const ranked = useMemo<RankedBid[]>(() => {
     return bids
       .map((b) => ({ ...b, composite: compositeScore(b, lowestBid) }))
       .sort((a, b) => b.composite - a.composite);
@@ -90,13 +96,106 @@ export default function BidEvaluation() {
     toast.success("Evaluation report finalized");
   };
 
+  const handleExportCER = () => {
+    if (!tender) { toast.error("Select a tender first"); return; }
+
+    const bidRows = ranked.map((b, i) => {
+      const v = vendorOf(b.vendorId);
+      const variance = ((b.bidAmount - tender.estimatedValue) / tender.estimatedValue) * 100;
+      return `<tr>
+        <td><strong>${i === 0 ? "H1 ★" : `H${i + 1}`}</strong></td>
+        <td><strong>${v?.companyName ?? b.vendorId}</strong><br/><small style="color:#666">${b.vendorId} · ${b.deliveryDays}-day delivery</small></td>
+        <td style="text-align:right;font-family:monospace">${fmtINR(b.bidAmount)}</td>
+        <td style="text-align:right;color:${variance < 0 ? "#27ae60" : "#e67e22"}">${variance > 0 ? "+" : ""}${variance.toFixed(1)}%</td>
+        <td style="text-align:center">${b.technicalScore}</td>
+        <td style="text-align:center">${b.pastPerformance}</td>
+        <td style="text-align:center">${b.complianceScore}</td>
+        <td style="text-align:right"><strong style="color:#1a3a6b">${b.composite.toFixed(1)}</strong></td>
+        <td style="text-align:center">${b.documentsComplete ? "✓" : '<span style="color:#c0392b">✗ Incomplete</span>'}</td>
+      </tr>`;
+    }).join("");
+
+    const complianceRows = ranked.map((b) => {
+      const v = vendorOf(b.vendorId);
+      const ok = (c: boolean) => c ? '<span style="color:#27ae60">✓</span>' : '<span style="color:#c0392b">✗</span>';
+      return `<tr>
+        <td>${v?.companyName ?? b.vendorId}</td>
+        <td style="text-align:center">${ok(!!v?.gst)}</td>
+        <td style="text-align:center">${ok(!!v?.pan)}</td>
+        <td style="text-align:center">${ok(b.documentsComplete)}</td>
+        <td style="text-align:center">${ok(!v?.blacklisted)}</td>
+        <td style="font-size:9pt;color:#555">${b.remarks}</td>
+      </tr>`;
+    }).join("");
+
+    const winnerV = winner ? vendorOf(winner.vendorId) : null;
+    const l1V = l1 ? vendorOf(l1.vendorId) : null;
+    const l1Var = l1 ? ((l1.bidAmount - tender.estimatedValue) / tender.estimatedValue * 100) : 0;
+
+    const bodyHtml = `
+      <div class="doc-title">Comparative Evaluation Report (CER)</div>
+
+      <div class="section-head">A. Tender Details</div>
+      <div class="kv"><span class="k">Tender ID:</span>${tender.id}</div>
+      <div class="kv"><span class="k">Tender Name:</span>${tender.name}</div>
+      <div class="kv"><span class="k">Department:</span>${tender.department}</div>
+      <div class="kv"><span class="k">Category:</span>${tender.category}</div>
+      <div class="kv"><span class="k">Estimated Value:</span>${fmtINR(tender.estimatedValue)}</div>
+      <div class="kv"><span class="k">Bid Closing Date:</span>${fmtDate(tender.endDate)}</div>
+      <div class="kv"><span class="k">Status:</span>${tender.status}</div>
+      <div class="kv"><span class="k">Total Bids Received:</span>${bids.length}</div>
+
+      <div class="section-head">B. Comparative Statement (QCBS 80:20)</div>
+      <p style="font-size:9pt;color:#555;margin:4px 0 6px">Composite = 40% Price + 30% Technical + 20% Past Performance + 10% Compliance</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th><th>Vendor</th><th>Bid Amount</th><th>vs Estimate</th>
+            <th>Technical</th><th>Past Perf.</th><th>Compliance</th><th>Composite</th><th>Docs</th>
+          </tr>
+        </thead>
+        <tbody>${bidRows}</tbody>
+      </table>
+
+      <div class="section-head">C. Compliance Check</div>
+      <table>
+        <thead>
+          <tr><th>Vendor</th><th>GST</th><th>PAN</th><th>EMD / BG</th><th>Not Blacklisted</th><th>Remarks</th></tr>
+        </thead>
+        <tbody>${complianceRows}</tbody>
+      </table>
+
+      ${winnerV ? `
+      <div class="section-head">D. AI-Assisted Recommendation</div>
+      <div class="kv"><span class="k">Recommended Vendor (H1):</span><strong>${winnerV.companyName}</strong></div>
+      <div class="kv"><span class="k">Composite Score:</span>${winner!.composite.toFixed(1)} / 100</div>
+      <div class="kv"><span class="k">Quoted Amount:</span>${fmtINR(winner!.bidAmount)}</div>
+      ${l1V ? `<div class="kv"><span class="k">L1 (Lowest Price):</span>${l1V.companyName} — ${fmtINR(l1!.bidAmount)} (${l1Var > 0 ? "+" : ""}${l1Var.toFixed(1)}% vs estimate)</div>` : ""}
+      <div class="kv"><span class="k">Risk Flags:</span>${ranked.filter(r => !r.documentsComplete).length} bid(s) with missing EMD/BG &nbsp;·&nbsp; ${ranked.filter(r => vendorOf(r.vendorId)?.blacklisted).length} blacklisted vendor(s)</div>
+      ` : ""}
+
+      <div class="stamp">
+        <p>Prepared by: AP e-Procurement — AI Evaluation Engine v4.2.1</p>
+        <p style="margin-top:50px;border-top:1px solid #bbb;padding-top:8px;width:260px;display:inline-block">
+          Signature of Tender Inviting Authority
+        </p>
+        <p style="margin-top:4px">Designation: ______________________________</p>
+        <p>Date: _______________________</p>
+        <p>Office Seal:</p>
+      </div>
+    `;
+
+    printAsPdf(`CER — ${tender.id}`, bodyHtml);
+    toast.success("Print dialog opened — choose 'Save as PDF'");
+  };
+
   return (
     <AdminLayout
       title={T("be_title")}
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("nav_bid_evaluation") }]}
       actions={
         <>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCER}>
             <Download className="h-3.5 w-3.5" /> {T("be_export_cer")}
           </Button>
           <Button size="sm" className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleAward} disabled={!tender || tender.status === "Awarded"}>
@@ -218,7 +317,7 @@ export default function BidEvaluation() {
                       const v = vendorOf(b.vendorId);
                       const variance = tender ? ((b.bidAmount - tender.estimatedValue) / tender.estimatedValue) * 100 : 0;
                       return (
-                        <TableRow key={b.vendorId} className={i === 0 ? "bg-accent/5" : ""}>
+                        <TableRow key={b.vendorId} className={`cursor-pointer hover:bg-secondary/60 transition-colors ${i === 0 ? "bg-accent/5" : ""}`} onClick={() => setSelectedBid(b)}>
                           <TableCell>
                             <Badge variant={i === 0 ? "default" : "outline"} className={i === 0 ? "bg-accent text-accent-foreground" : ""}>
                               {i === 0 ? "H1 ★" : `H${i + 1}`}
@@ -306,7 +405,7 @@ export default function BidEvaluation() {
                       const v = vendorOf(b.vendorId);
                       const ok = (cond: boolean) => cond ? <CheckCircle2 className="mx-auto h-4 w-4 text-success" /> : <XCircle className="mx-auto h-4 w-4 text-destructive" />;
                       return (
-                        <TableRow key={b.vendorId}>
+                        <TableRow key={b.vendorId} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelectedBid(b)}>
                           <TableCell className="text-sm font-semibold text-primary">{v?.companyName}</TableCell>
                           <TableCell className="text-center">{ok(!!v?.gst)}</TableCell>
                           <TableCell className="text-center">{ok(!!v?.pan)}</TableCell>
@@ -331,6 +430,131 @@ export default function BidEvaluation() {
           </div>
         )}
       </div>
+
+      {/* Bid detail popup */}
+      <Dialog open={!!selectedBid} onOpenChange={(o) => !o && setSelectedBid(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedBid && (() => {
+            const v = vendorOf(selectedBid.vendorId);
+            const rank = ranked.indexOf(selectedBid) + 1;
+            const variance = tender ? ((selectedBid.bidAmount - tender.estimatedValue) / tender.estimatedValue) * 100 : 0;
+            const priceScore = lowestBid ? (lowestBid / selectedBid.bidAmount) * 100 : 0;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-primary">
+                    <Badge className={rank === 1 ? "bg-accent text-accent-foreground" : "bg-secondary text-foreground"}>
+                      {rank === 1 ? "H1 ★" : `H${rank}`}
+                    </Badge>
+                    {v?.companyName ?? selectedBid.vendorId}
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  {/* Vendor profile */}
+                  {v && (
+                    <div className="rounded-sm border border-border bg-secondary/20 p-4">
+                      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3" /> Vendor Profile
+                      </p>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                        <div><p className="text-muted-foreground">Vendor ID</p><p className="font-mono font-semibold">{v.id}</p></div>
+                        <div><p className="text-muted-foreground">Category</p><p className="font-semibold">{v.category}</p></div>
+                        <div><p className="text-muted-foreground">GST No.</p><p className="font-mono">{v.gst || "—"}</p></div>
+                        <div><p className="text-muted-foreground">PAN No.</p><p className="font-mono">{v.pan || "—"}</p></div>
+                        {v.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3 text-muted-foreground" /><p>{v.email}</p></div>}
+                        {v.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" /><p>{v.phone}</p></div>}
+                        <div>
+                          <p className="text-muted-foreground">Status</p>
+                          {v.blacklisted
+                            ? <Badge variant="destructive" className="rounded-sm text-[10px]">Blacklisted</Badge>
+                            : <Badge className="rounded-sm bg-success text-[10px] text-success-foreground">Active</Badge>}
+                        </div>
+                        <div><p className="text-muted-foreground">Tenders Completed</p><p className="font-semibold">{v.completedTenders}</p></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Bid details */}
+                  <div>
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bid Details</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="rounded-sm border border-border bg-card p-3">
+                        <p className="text-muted-foreground">Quoted Amount</p>
+                        <p className="mt-0.5 text-lg font-bold text-primary">{fmtINR(selectedBid.bidAmount)}</p>
+                        <p className={`text-xs font-semibold ${variance < 0 ? "text-success" : "text-warning"}`}>
+                          {variance > 0 ? "+" : ""}{variance.toFixed(1)}% vs estimate
+                        </p>
+                      </div>
+                      <div className="rounded-sm border border-border bg-card p-3">
+                        <p className="text-muted-foreground">Delivery Schedule</p>
+                        <p className="mt-0.5 text-lg font-bold text-primary">{selectedBid.deliveryDays} days</p>
+                        <p className="text-xs text-muted-foreground">from contract date</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Score breakdown */}
+                  <div>
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score Breakdown (QCBS 80:20)</p>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Price Score (40%)", val: priceScore, weight: 0.4 },
+                        { label: "Technical Capability (30%)", val: selectedBid.technicalScore, weight: 0.3 },
+                        { label: "Past Performance (20%)", val: selectedBid.pastPerformance, weight: 0.2 },
+                        { label: "Compliance (10%)", val: selectedBid.complianceScore, weight: 0.1 },
+                      ].map(({ label, val, weight }) => (
+                        <div key={label}>
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{label}</span>
+                            <span className="font-semibold text-foreground">{val.toFixed(1)} <span className="text-muted-foreground text-[10px]">(weighted: {(val * weight).toFixed(1)})</span></span>
+                          </div>
+                          <Progress value={val} className="h-2" />
+                        </div>
+                      ))}
+                      <div className="mt-3 flex items-center justify-between rounded-sm border border-accent/40 bg-accent/5 px-3 py-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-accent">
+                          <Star className="h-3.5 w-3.5 fill-accent" /> Composite Score
+                        </div>
+                        <span className="text-xl font-bold text-accent">{selectedBid.composite.toFixed(1)}<span className="text-sm text-muted-foreground">/100</span></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Compliance */}
+                  <div>
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Compliance Status</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {[
+                        { label: "GST Registration", ok: !!v?.gst },
+                        { label: "PAN Card", ok: !!v?.pan },
+                        { label: "EMD / Bank Guarantee", ok: selectedBid.documentsComplete },
+                        { label: "Not Blacklisted", ok: !v?.blacklisted },
+                      ].map(({ label, ok }) => (
+                        <div key={label} className={`flex items-center gap-2 rounded-sm border px-3 py-2 ${ok ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+                          {ok ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" /> : <XCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />}
+                          <span className={ok ? "text-success" : "text-destructive"}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedBid.remarks && (
+                      <p className="mt-2 text-xs text-muted-foreground italic">
+                        Remarks: {selectedBid.remarks}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

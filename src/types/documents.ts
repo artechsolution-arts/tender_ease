@@ -59,6 +59,7 @@ export interface VendorDocument {
   fileSize: number;
   filePath: string;
   docType: DocType;
+  publicUrl?: string;
   ocrText?: string;
   ocrStatus: OcrStatus;
   ocrError?: string;

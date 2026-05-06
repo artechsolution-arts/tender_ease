@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -13,16 +13,31 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { fmtDate, fmtINR } from "@/store/admin-store";
 import { useAuth } from "@/store/auth-store";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, Download,
   FileCheck2, FileText, Send, ShieldCheck, TrendingUp, Wallet,
   ArrowRight, UserCheck, ShieldAlert, RefreshCw, Award, XCircle,
+  Upload, Brain, Eye, Trash2,
 } from "lucide-react";
 import { apiClient as api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useT } from "@/lib/useT";
+import { useDocuments } from "@/hooks/useDocuments";
+import { DocumentUpload } from "@/components/documents/DocumentUpload";
+import { DocumentPreview } from "@/components/documents/DocumentPreview";
+import { ValidationResult } from "@/components/documents/ValidationResult";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import {
+  DOC_TYPE_LABELS, RATING_CONFIG, STATUS_CONFIG,
+  type VendorDocument as ApiVendorDoc,
+} from "@/types/documents";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface VendorProfile {
@@ -110,6 +125,16 @@ export default function VendorDashboard() {
   const [submitting, setSubmitting] = useState(false);
 
   const [detailTenderId, setDetailTenderId] = useState<string | null>(null);
+  const [selectedApiDoc, setSelectedApiDoc] = useState<ApiVendorDoc | null>(null);
+  const [uploadDocOpen, setUploadDocOpen] = useState(false);
+  const [docCardFilter, setDocCardFilter] = useState<string | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<ApiVendorDoc | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
+  const [tenderStatusFilter, setTenderStatusFilter] = useState<string | null>(null);
+  const tendersRef = useRef<HTMLDivElement>(null);
+  const bidsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "Vendor Dashboard — AP Tender";
@@ -153,6 +178,24 @@ export default function VendorDashboard() {
     enabled: Boolean(detailTenderId),
     staleTime: 60_000,
   });
+
+  // ── Real uploaded documents (OCR pipeline) ───────────────────────────────────
+  const { data: myDocsData, isLoading: docsLoading, refetch: refetchDocs } = useDocuments();
+  const myDocs: ApiVendorDoc[] = myDocsData?.docs ?? [];
+
+  async function handleDeleteDoc(docId: string) {
+    setDeletingDocId(docId);
+    try {
+      await api.delete(`/documents/${docId}`);
+      toast({ title: "Document deleted", description: "Removed from your account and storage." });
+      if (selectedApiDoc?.id === docId) setSelectedApiDoc(null);
+      refetchDocs();
+    } catch {
+      toast({ title: "Delete failed", description: "Could not delete the document. Please try again.", variant: "destructive" });
+    } finally {
+      setDeletingDocId(null);
+    }
+  }
 
   // ── Derived values ───────────────────────────────────────────────────────────
 
@@ -329,6 +372,13 @@ export default function VendorDashboard() {
             <Button
               variant="outline" size="sm"
               className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary"
+              onClick={() => setProfileOpen(true)}
+            >
+              <UserCheck className="h-3.5 w-3.5" /> My Profile
+            </Button>
+            <Button
+              variant="outline" size="sm"
+              className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary"
               onClick={downloadProfile}
             >
               <Download className="h-3.5 w-3.5" /> {T("vd_download_profile")}
@@ -345,6 +395,209 @@ export default function VendorDashboard() {
         )
       }
     >
+      {/* ── Full profile sheet ── */}
+      <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <UserCheck className="h-5 w-5 text-primary" /> My Profile
+            </SheetTitle>
+          </SheetHeader>
+
+          {/* Company identity */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-sm bg-primary text-xl font-bold text-primary-foreground shrink-0">
+              {vendor.companyName.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-primary">{vendor.companyName}</h2>
+              <p className="text-xs text-muted-foreground">{vendor.id}</p>
+              <Badge className={`mt-1 rounded-sm text-xs ${vendor.blacklisted ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>
+                {vendor.blacklisted ? "Blacklisted" : "Active Vendor"}
+              </Badge>
+            </div>
+          </div>
+
+          <Separator className="mb-5" />
+
+          {/* Registration details grid */}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Company Details</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            {[
+              { label: "Company Name",   value: vendor.companyName },
+              { label: "Contact Person", value: vendor.contactPerson },
+              { label: "Email Address",  value: vendor.email },
+              { label: "Phone Number",   value: vendor.phone },
+              { label: "Category",       value: vendor.category },
+              { label: "GST Number",     value: vendor.gst || "—", mono: true },
+              { label: "PAN Number",     value: vendor.pan || "—", mono: true },
+              { label: "Registered On",  value: vendor.registeredOn ? fmtDate(vendor.registeredOn) : "—" },
+              { label: "Vendor ID",      value: vendor.id, mono: true },
+            ].map(({ label, value, mono }) => (
+              <div key={label} className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{label}</p>
+                <p className={`text-sm font-medium text-foreground ${mono ? "font-mono" : ""}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <Separator className="mb-5" />
+
+          {/* Performance */}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Performance</p>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Past Performance Score</p>
+              <p className="text-2xl font-bold text-primary">{vendor.pastPerformance}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+              <Progress value={vendor.pastPerformance} className="h-1.5 mt-2" />
+            </div>
+            <div className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Completed Tenders</p>
+              <p className="text-2xl font-bold text-primary">{vendor.completedTenders}</p>
+              <p className="text-xs text-muted-foreground mt-1">Successfully delivered</p>
+            </div>
+          </div>
+
+          <Separator className="mb-5" />
+
+          {/* Uploaded documents */}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+            Uploaded Documents <span className="font-normal">({myDocs.length})</span>
+          </p>
+          {myDocs.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No documents uploaded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {myDocs.map((doc) => {
+                const v = doc.validation;
+                const rating = v ? RATING_CONFIG[v.aiRating] : null;
+                const statusCfg = v ? STATUS_CONFIG[v.status] : null;
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-3 rounded-sm border border-border bg-secondary/20 px-4 py-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+                    onClick={() => { setSelectedApiDoc(doc); setProfileOpen(false); }}
+                  >
+                    <FileCheck2 className="h-5 w-5 shrink-0 text-primary/60" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.originalName}</p>
+                      <p className="text-[10px] text-muted-foreground">{DOC_TYPE_LABELS[doc.docType]} · {(doc.fileSize / 1024).toFixed(0)} KB · {new Date(doc.createdAt).toLocaleDateString("en-IN")}</p>
+                    </div>
+                    <div className="shrink-0 text-right space-y-1">
+                      {rating && (
+                        <span className={`inline-block rounded-sm px-2 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                          {v!.aiScore} · {rating.label}
+                        </span>
+                      )}
+                      {statusCfg && (
+                        <p className={`text-[10px] font-semibold ${statusCfg.color}`}>{statusCfg.label}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Upload document dialog ── */}
+      <Dialog open={uploadDocOpen} onOpenChange={setUploadDocOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Upload Document for AI Validation
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            File is uploaded to the server and sent for OCR analysis by Claude AI. Results appear in 10–30 seconds.
+          </p>
+          <DocumentUpload
+            vendorId={vendorId || undefined}
+            onSuccess={() => { setUploadDocOpen(false); refetchDocs(); }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Document detail sheet ── */}
+      <Sheet open={!!selectedApiDoc} onOpenChange={(o) => !o && setSelectedApiDoc(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          {selectedApiDoc && (
+            <>
+              <SheetHeader className="mb-4">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <FileCheck2 className="h-5 w-5 text-primary" />
+                  {selectedApiDoc.originalName}
+                </SheetTitle>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>{DOC_TYPE_LABELS[selectedApiDoc.docType]}</span>
+                  <span>·</span>
+                  <span>{(selectedApiDoc.fileSize / 1024).toFixed(0)} KB</span>
+                  <span>·</span>
+                  <span>Uploaded {new Date(selectedApiDoc.createdAt).toLocaleDateString("en-IN")}</span>
+                </div>
+              </SheetHeader>
+
+              {/* Original document preview */}
+              <DocumentPreview doc={selectedApiDoc} />
+
+              <Separator className="my-4" />
+
+              <ValidationResult doc={selectedApiDoc} showRetry={false} />
+
+              {selectedApiDoc.ocrText && (
+                <>
+                  <Separator className="my-4" />
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">OCR Extracted Text</p>
+                    <pre className="text-xs text-muted-foreground bg-secondary/40 rounded-sm p-3 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
+                      {selectedApiDoc.ocrText}
+                    </pre>
+                  </div>
+                </>
+              )}
+
+              <Separator className="my-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                disabled={deletingDocId === selectedApiDoc.id}
+                onClick={() => setConfirmDeleteDoc(selectedApiDoc)}
+              >
+                <Trash2 className="h-4 w-4" />
+                {deletingDocId === selectedApiDoc.id ? "Deleting…" : "Delete This Document"}
+              </Button>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Delete confirmation ── */}
+      <AlertDialog open={!!confirmDeleteDoc} onOpenChange={(o) => !o && setConfirmDeleteDoc(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{confirmDeleteDoc?.originalName}</strong> will be permanently removed from your account,
+              the admin panel, and all storage. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDeleteDoc) handleDeleteDoc(confirmDeleteDoc.id);
+                setConfirmDeleteDoc(null);
+              }}
+            >
+              Yes, delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* ── Bid submission dialog ── */}
       <Dialog open={bidOpen} onOpenChange={setBidOpen}>
         <DialogContent className="max-w-md">
@@ -459,11 +712,39 @@ export default function VendorDashboard() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Attached Documents</p>
                   <ul className="divide-y divide-border rounded-sm border border-border">
                     {tenderDetail.documents.map((doc) => (
-                      <li key={doc.id} className="flex items-center justify-between px-3 py-2 text-xs">
-                        <span className="flex items-center gap-2 font-medium">
-                          <FileText className="h-3.5 w-3.5 text-primary" /> {doc.name}
+                      <li key={doc.id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-secondary/30 transition-colors">
+                        <span className="flex items-center gap-2 font-medium min-w-0">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span className="truncate">{doc.name}</span>
+                          {doc.size && <span className="text-muted-foreground shrink-0">· {doc.size}</span>}
                         </span>
-                        {doc.size && <span className="text-muted-foreground">{doc.size}</span>}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 shrink-0 gap-1 rounded-sm px-2 text-[10px]"
+                          onClick={() => {
+                            const content = doc.url
+                              ? undefined
+                              : `Tender Document: ${doc.name}\nTender: ${tenderDetail.name} (${tenderDetail.id})\nDepartment: ${tenderDetail.department}\nFile Size: ${doc.size || "—"}\n\nThis document is part of the AP e-Procurement tender notice.\nReference: ${tenderDetail.id}\nIssued by: ${tenderDetail.department}\nDate: ${new Date().toLocaleDateString("en-IN")}`;
+                            if (doc.url) {
+                              const a = document.createElement("a");
+                              a.href = doc.url;
+                              a.download = doc.name;
+                              a.target = "_blank";
+                              a.click();
+                            } else {
+                              const blob = new Blob([content!], { type: "text/plain" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = doc.name.replace(/\s+/g, "_") + ".txt";
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }
+                          }}
+                        >
+                          <Download className="h-3 w-3" /> Download
+                        </Button>
                       </li>
                     ))}
                   </ul>
@@ -662,30 +943,34 @@ export default function VendorDashboard() {
 
             {/* KPI cards */}
             <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Card className="rounded-sm border-l-4 border-l-primary p-4">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vd_kpi_eligible")}</p>
-                <p className="text-2xl font-bold text-primary">{tendersLoading ? "—" : eligibleTenders.length}</p>
-                <p className="text-xs text-muted-foreground">Matched to category</p>
-              </Card>
-              <Card className="rounded-sm border-l-4 border-l-warning p-4">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Open to Bid</p>
-                <p className="text-2xl font-bold text-warning">{tendersLoading ? "—" : openTenders.length}</p>
-                <p className="text-xs text-muted-foreground">Published tenders</p>
-              </Card>
-              <Card className="rounded-sm border-l-4 border-l-info p-4">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Bids Submitted</p>
-                <p className="text-2xl font-bold text-info">{bidsLoading ? "—" : enrichedBids.length}</p>
-                <p className="text-xs text-muted-foreground">Total across tenders</p>
-              </Card>
-              <Card className="rounded-sm border-l-4 border-l-success p-4">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vd_kpi_awarded")}</p>
-                <p className="text-2xl font-bold text-success">{tendersLoading ? "—" : awardedTenders.length}</p>
-                <p className="text-xs text-muted-foreground">{fmtINR(awardedValue)} total</p>
-              </Card>
+              {[
+                { key: "eligible", label: T("vd_kpi_eligible"), value: tendersLoading ? "—" : eligibleTenders.length, sub: "Matched to category", color: "border-l-primary", text: "text-primary", filter: null, ref: tendersRef },
+                { key: "open",     label: "Open to Bid",         value: tendersLoading ? "—" : openTenders.length,     sub: "Published tenders",   color: "border-l-warning", text: "text-warning", filter: "Published", ref: tendersRef },
+                { key: "bids",     label: "Bids Submitted",      value: bidsLoading    ? "—" : enrichedBids.length,    sub: "Total across tenders", color: "border-l-info",    text: "text-info",    filter: null, ref: bidsRef },
+                { key: "awarded",  label: T("vd_kpi_awarded"),   value: tendersLoading ? "—" : awardedTenders.length,  sub: `${fmtINR(awardedValue)} total`, color: "border-l-success", text: "text-success", filter: "Awarded", ref: tendersRef },
+              ].map(({ key, label, value, sub, color, text, filter, ref }) => {
+                const isActive = activeKpi === key;
+                return (
+                  <Card
+                    key={key}
+                    onClick={() => {
+                      const next = isActive ? null : key;
+                      setActiveKpi(next);
+                      setTenderStatusFilter(next ? filter : null);
+                      if (next) ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className={`rounded-sm border-l-4 ${color} p-4 cursor-pointer transition-all hover:shadow-md ${isActive ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
+                  >
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
+                    <p className={`text-2xl font-bold ${text}`}>{value}</p>
+                    <p className="text-xs text-muted-foreground">{isActive ? "Click to clear filter" : sub}</p>
+                  </Card>
+                );
+              })}
             </section>
 
             {/* Eligible tenders */}
-            <Card className="rounded-sm border-border shadow-sm">
+            <Card ref={tendersRef} className="rounded-sm border-border shadow-sm">
               <div className="border-b border-border bg-secondary/50 px-4 py-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
                   <FileText className="h-4 w-4" /> {T("vd_eligible_tenders")}
@@ -716,8 +1001,14 @@ export default function VendorDashboard() {
                           No eligible tenders found for your vendor category.
                         </TableCell>
                       </TableRow>
+                    ) : eligibleTenders.filter((t) => !tenderStatusFilter || t.status === tenderStatusFilter).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                          No {tenderStatusFilter?.toLowerCase()} tenders found.
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      eligibleTenders.map((t) => (
+                      eligibleTenders.filter((t) => !tenderStatusFilter || t.status === tenderStatusFilter).map((t) => (
                         <TableRow
                           key={t.id}
                           className="border-border/60 cursor-pointer hover:bg-secondary/40 transition-colors"
@@ -745,7 +1036,7 @@ export default function VendorDashboard() {
             </Card>
 
             {/* Bid history */}
-            <Card className="rounded-sm border-border shadow-sm">
+            <Card ref={bidsRef} className="rounded-sm border-border shadow-sm">
               <div className="border-b border-border bg-secondary/50 px-4 py-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
                   <TrendingUp className="h-4 w-4" /> {T("vd_bid_history")}
@@ -796,6 +1087,140 @@ export default function VendorDashboard() {
                   </TableBody>
                 </Table>
               </div>
+            </Card>
+
+            {/* My Documents — real API + OCR pipeline */}
+            <Card className="rounded-sm border-border shadow-sm">
+              <div className="border-b border-border bg-secondary/50 px-4 py-3 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
+                  <FileCheck2 className="h-4 w-4" /> My Documents
+                  {!docsLoading && <span className="text-xs font-normal text-muted-foreground">({myDocs.length})</span>}
+                </h3>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetchDocs()}>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => setUploadDocOpen(true)}>
+                    <Upload className="h-3 w-3" /> Upload Document
+                  </Button>
+                </div>
+              </div>
+
+              {/* Summary strip — clickable to filter */}
+              {myDocs.length > 0 && (
+                <div className="grid grid-cols-4 divide-x divide-border border-b border-border text-center text-xs">
+                  {([
+                    ["Total",     myDocs.length,                                                                    "text-primary"],
+                    ["Approved",  myDocs.filter((d) => d.validation?.status === "OFFICER_APPROVED").length,         "text-success"],
+                    ["AI Review", myDocs.filter((d) => d.validation?.status === "AI_REVIEWED").length,              "text-info"],
+                    ["Flagged",   myDocs.filter((d) => d.validation?.aiFlagged).length,                             "text-destructive"],
+                  ] as [string, number, string][]).map(([label, count, cls]) => {
+                    const isActive = docCardFilter === label;
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => setDocCardFilter(isActive || label === "Total" ? null : label)}
+                        className={`py-3 w-full transition-colors hover:bg-secondary/50 ${isActive ? "bg-secondary/70" : ""}`}
+                      >
+                        <p className={`text-lg font-bold ${cls}`}>{count}</p>
+                        <p className="text-muted-foreground">{label}</p>
+                        {isActive && <p className="text-[9px] text-muted-foreground">✕ clear</p>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {docsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Loading documents…
+                </div>
+              ) : myDocs.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <FileCheck2 className="h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                  <p className="text-xs text-muted-foreground">Upload your registration documents to start the AI OCR verification process.</p>
+                  <Button size="sm" className="mt-1 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setUploadDocOpen(true)}>
+                    <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <th className="px-4 py-2.5 text-left">File</th>
+                        <th className="px-4 py-2.5 text-left">Type</th>
+                        <th className="px-4 py-2.5 text-left">OCR / AI Score</th>
+                        <th className="px-4 py-2.5 text-left">Status</th>
+                        <th className="px-4 py-2.5 text-left">Uploaded</th>
+                        <th className="px-4 py-2.5" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {myDocs.filter((doc) => {
+                        if (!docCardFilter) return true;
+                        if (docCardFilter === "Approved")  return doc.validation?.status === "OFFICER_APPROVED";
+                        if (docCardFilter === "AI Review") return doc.validation?.status === "AI_REVIEWED";
+                        if (docCardFilter === "Flagged")   return doc.validation?.aiFlagged === true;
+                        return true;
+                      }).map((doc) => {
+                        const v = doc.validation;
+                        const rating = v ? RATING_CONFIG[v.aiRating] : null;
+                        const statusCfg = v ? STATUS_CONFIG[v.status] : null;
+                        const isProcessing = doc.ocrStatus === "PROCESSING" || doc.ocrStatus === "PENDING";
+                        return (
+                          <tr key={doc.id} className="hover:bg-secondary/40 transition-colors cursor-pointer" onClick={() => setSelectedApiDoc(doc)}>
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-foreground max-w-[180px] truncate">{doc.originalName}</p>
+                              <p className="text-muted-foreground text-[10px]">{(doc.fileSize / 1024).toFixed(0)} KB</p>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{DOC_TYPE_LABELS[doc.docType] || doc.docType}</td>
+                            <td className="px-4 py-3">
+                              {rating ? (
+                                <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                                  {v!.aiScore} · {rating.label}
+                                  {v!.aiFlagged && <AlertTriangle className="h-3 w-3 ml-1" />}
+                                </span>
+                              ) : isProcessing ? (
+                                <span className="flex items-center gap-1 text-[10px] text-info">
+                                  <Brain className="h-3 w-3 animate-pulse" /> OCR running…
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> Queued
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] font-semibold ${statusCfg?.color ?? "text-muted-foreground"}`}>
+                                {statusCfg?.label ?? "Processing"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{new Date(doc.createdAt).toLocaleDateString("en-IN")}</td>
+                            <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => setSelectedApiDoc(doc)}>
+                                  <Eye className="h-3.5 w-3.5" /> View
+                                </Button>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="h-7 gap-1 rounded-sm text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  disabled={deletingDocId === doc.id}
+                                  onClick={() => setConfirmDeleteDoc(doc)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  {deletingDocId === doc.id ? "…" : "Delete"}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </Card>
 
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDocuments } from "@/hooks/useDocuments";
 import { Bell, FileText, Users, Sparkles, LayoutDashboard, FileCheck2, Gavel, BarChart3, ShieldCheck, HelpCircle, LogOut, ChevronRight, BriefcaseBusiness, ScanSearch, Phone, Mail, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +68,11 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
   };
 
   const navItems = NAV.filter((item) => item.roles.includes((currentUser?.role ?? "admin") as UserRole));
+  const isAdmin = currentUser?.role === "admin";
+  const { data: docsData } = useDocuments(isAdmin ? {} : undefined);
+  const pendingReviewCount = isAdmin
+    ? (docsData?.docs ?? []).filter((d) => d.validation?.status === "AI_REVIEWED").length
+    : 0;
   const visibleNotifications = notifications.filter((n) => {
     if (!currentUser) return false;
     if (n.targetRole && n.targetRole !== "all" && n.targetRole !== currentUser.role) return false;
@@ -284,6 +290,11 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
                 >
                   <item.icon className="h-3.5 w-3.5" />
                   {t(lang, item.labelKey)}
+                  {item.to === "/documents" && pendingReviewCount > 0 && (
+                    <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      {pendingReviewCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
@@ -321,7 +332,7 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
               <li><Link to="/tenders" className="hover:text-accent">{t(lang, "nav_tenders")}</Link></li>
               <li><Link to="/vendors" className="hover:text-accent">{t(lang, "nav_vendors")}</Link></li>
               <li><Link to="/notifications" className="hover:text-accent">{t(lang, "nav_notifications")}</Link></li>
-              <li><a className="hover:text-accent cursor-pointer">{t(lang, "footer_cvc_guidelines")}</a></li>
+              <li><Link to="/compliance" className="hover:text-accent">{t(lang, "footer_cvc_guidelines")}</Link></li>
             </ul>
           </div>
           <div>

@@ -190,7 +190,7 @@ Tender Inviting Authority`;
                   const v = vendorOf(t.awardedVendorId);
                   const award = t.history.find((h) => h.changes.toLowerCase().includes("awarded"));
                   return (
-                    <TableRow key={t.id} className="text-xs">
+                    <TableRow key={t.id} className="text-xs cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setSelected(t)}>
                       <TableCell className="font-mono font-semibold text-primary">
                         LOA/{t.id}
                         <p className="font-sans text-[10px] font-normal text-muted-foreground">{t.id}</p>
@@ -207,7 +207,7 @@ Tender Inviting Authority`;
                       <TableCell className="text-right font-semibold">{fmtINR(t.estimatedValue)}</TableCell>
                       <TableCell>{fmtDate(award?.editedAt ?? t.createdAt)}</TableCell>
                       <TableCell><TenderStatusBadge status={t.status} /></TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => setSelected(t)}>{T("common_view")}</Button>
                           <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => downloadLoA(t)}>

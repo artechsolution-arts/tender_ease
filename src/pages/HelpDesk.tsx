@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { Phone, Mail, MapPin, Clock, MessageSquare, Send, Search, Ticket, BookOpen, Video, Download, ChevronRight, HelpCircle, AlertCircle, CheckCircle2, User } from "lucide-react";
 import { useT } from "@/lib/useT";
+import { printAsPdf, downloadBlob } from "@/lib/printPdf";
 
 interface SupportTicket {
   id: string;
@@ -57,6 +58,7 @@ export default function HelpDesk() {
   const T = useT();
   const [tickets, setTickets] = useState<SupportTicket[]>(SAMPLE_TICKETS);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("raise");
   const [form, setForm] = useState({ subject: "", category: "Tender Mgmt", priority: "Medium" as SupportTicket["priority"], description: "" });
 
   useEffect(() => {
@@ -89,6 +91,148 @@ export default function HelpDesk() {
     { title: "Corrigendum Issuance Guide", desc: "How to amend a published tender with version control.", type: "PDF", size: "780 KB", icon: BookOpen },
     { title: "Award & LoA Templates", desc: "Standard templates for Letter of Award and contracts.", type: "DOCX", size: "340 KB", icon: Download },
   ];
+
+  const GUIDE_CONTENT: Record<string, string> = {
+    "Officer Onboarding Guide": `
+      <div class="doc-title">Officer Onboarding Guide</div>
+      <div class="kv"><span class="k">Audience:</span>Tender Inviting Authorities (TIA), District Officers</div>
+      <div class="section-head">1. System Overview</div>
+      <p style="font-size:10pt;margin:6px 0">The AP e-Procurement Portal enables end-to-end digital procurement — from NIT publication to Letter of Award — fully compliant with GFR 2017, CVC Manual on Procurement, and AP Financial Code.</p>
+      <div class="section-head">2. Initial Setup</div>
+      <div class="kv"><span class="k">Step 1:</span>Obtain official government email from your IT department.</div>
+      <div class="kv"><span class="k">Step 2:</span>Submit onboarding form at Admin → User Management with DSC certificate details.</div>
+      <div class="kv"><span class="k">Step 3:</span>Complete profile: designation, department, contact details, authorised value limit.</div>
+      <div class="kv"><span class="k">Step 4:</span>Register your Class-3 DSC token (see DSC Installation Manual).</div>
+      <div class="section-head">3. Publishing a NIT</div>
+      <div class="kv"><span class="k">Navigate to:</span>Tenders → Create New NIT</div>
+      <div class="kv"><span class="k">Mandatory fields:</span>Category, Department, Estimated Value, EMD amount, Bid Opening Date, Eligibility Criteria</div>
+      <div class="kv"><span class="k">Documents:</span>Upload NIT document, BOQ, Drawings (max 25 MB per file). All PDFs must be text-searchable.</div>
+      <div class="kv"><span class="k">Notice period:</span>Minimum 21 days from publication to bid closing (30 days for works &gt; ₹50 Cr).</div>
+      <div class="kv"><span class="k">Final step:</span>DSC-sign and publish. Eligible vendors are auto-notified by email and SMS.</div>
+      <div class="section-head">4. Bid Opening</div>
+      <p style="font-size:10pt;margin:6px 0">On the bid opening date, navigate to Bid Evaluation → Select Tender → View Submissions. Two-envelope bids require technical opening first; financial envelope opens only for technically qualified bidders.</p>
+      <div class="section-head">5. Common Errors</div>
+      <div class="kv"><span class="k">DSC not detected:</span>Re-insert token; ensure browser plugin is active (Tools → DSC Management).</div>
+      <div class="kv"><span class="k">Upload fails:</span>File must be PDF/XLS only, &lt; 25 MB. Convert Word to PDF before upload.</div>
+      <div class="kv"><span class="k">Vendor missing:</span>Verify vendor is approved and category matches NIT category.</div>
+      <div class="stamp"><p>AP e-Procurement Help Desk · helpdesk@apeprocurement.gov.in · 1800-3070-2232</p></div>`,
+
+    "DSC Installation Manual": `
+      <div class="doc-title">DSC Installation Manual</div>
+      <div class="kv"><span class="k">Applies to:</span>eMudhra, SafeNet, WD, Sify Class-3 DSC Tokens</div>
+      <div class="section-head">1. Pre-requisites</div>
+      <div class="kv"><span class="k">OS:</span>Windows 10/11, macOS 12+, Ubuntu 20.04+</div>
+      <div class="kv"><span class="k">Browser:</span>Google Chrome 120+ or Mozilla Firefox 115+</div>
+      <div class="kv"><span class="k">Certificate validity:</span>Must be valid for at least 6 months from date of use.</div>
+      <div class="section-head">2. Windows Installation</div>
+      <div class="kv"><span class="k">Step 1:</span>Download token driver from your CA's website (e.g., emudhra.com → Support → Downloads).</div>
+      <div class="kv"><span class="k">Step 2:</span>Run installer as Administrator. Accept EULA; default installation path is recommended.</div>
+      <div class="kv"><span class="k">Step 3:</span>Insert DSC USB token. Wait for "Token Detected" in system tray.</div>
+      <div class="kv"><span class="k">Step 4:</span>Open Chrome → Settings → Privacy → Security → Manage Certificates → verify certificate is listed.</div>
+      <div class="section-head">3. macOS Installation</div>
+      <div class="kv"><span class="k">Step 1:</span>Install PKCS#11 driver (DMG file from CA website). Drag to Applications.</div>
+      <div class="kv"><span class="k">Step 2:</span>Open Keychain Access → Certificates → verify DSC appears.</div>
+      <div class="kv"><span class="k">Step 3:</span>In Chrome, go to chrome://settings/certificates and import if not auto-detected.</div>
+      <div class="section-head">4. Linux (Ubuntu)</div>
+      <div class="kv"><span class="k">Step 1:</span>Install opensc: sudo apt-get install opensc pcscd pcsc-tools</div>
+      <div class="kv"><span class="k">Step 2:</span>Run: pcsc_scan — verify token is detected.</div>
+      <div class="kv"><span class="k">Step 3:</span>Configure Firefox: Preferences → Privacy → Security Devices → Load PKCS#11 module.</div>
+      <div class="section-head">5. Portal Registration</div>
+      <p style="font-size:10pt;margin:6px 0">After OS-level installation, log in to the portal → Profile → DSC Management → Register New Certificate. Enter PIN when prompted. Test signing with the "Test DSC" button.</p>
+      <div class="stamp"><p>AP DSC Help Line · dsc.help@apeprocurement.gov.in · +91 863 244 1103</p></div>`,
+
+    "Corrigendum Issuance Guide": `
+      <div class="doc-title">Corrigendum Issuance Guide</div>
+      <div class="kv"><span class="k">Purpose:</span>Amend a published tender before bid submission deadline</div>
+      <div class="section-head">1. When to Issue a Corrigendum</div>
+      <p style="font-size:10pt;margin:6px 0">A corrigendum must be issued for any change to: scope of work, BOQ quantities, eligibility criteria, bid submission deadline, drawings, specifications, or estimated value. Changes to estimated value &gt; 10% require fresh approval from the sanctioning authority.</p>
+      <div class="section-head">2. Steps to Issue</div>
+      <div class="kv"><span class="k">Step 1:</span>Navigate to Tenders → select the NIT → Actions → Issue Corrigendum.</div>
+      <div class="kv"><span class="k">Step 2:</span>Select amendment type: Deadline Extension / Document Change / Scope Change / Combined.</div>
+      <div class="kv"><span class="k">Step 3:</span>Upload amended document (clearly marked "Addendum No. X — Date"). All changes must be highlighted/tracked.</div>
+      <div class="kv"><span class="k">Step 4:</span>Enter reason for amendment (mandatory — stored in audit trail).</div>
+      <div class="kv"><span class="k">Step 5:</span>If deadline is extended, the minimum remaining period from corrigendum date must be ≥ 7 days.</div>
+      <div class="kv"><span class="k">Step 6:</span>DSC-sign and publish. All registered bidders are auto-notified. Corrigendum appears in NIT history.</div>
+      <div class="section-head">3. Compliance Notes</div>
+      <div class="kv"><span class="k">Max corrigenda:</span>3 per NIT (beyond 3, re-tender is recommended as per CVC guidelines).</div>
+      <div class="kv"><span class="k">Record retention:</span>All corrigenda are preserved in the NIT audit log (7-year retention as per GFR Rule 33).</div>
+      <div class="stamp"><p>AP e-Procurement Portal · helpdesk@apeprocurement.gov.in · 1800-3070-2232</p></div>`,
+  };
+
+  const LOA_TEMPLATE = `LETTER OF AWARD TEMPLATE
+Government of Andhra Pradesh
+AP e-Procurement Portal
+
+[Ref No.]: ___/LoA/____/2026
+
+Date: _______________
+
+To,
+M/s _________________________________
+[Address]
+
+Sub: Letter of Award for [Tender Title] — NIT No. [NIT/XX/2025-26/XXX]
+
+Dear Sir/Madam,
+
+With reference to your bid dated __________ and subsequent negotiations/clarifications, the Government of Andhra Pradesh is pleased to award the above-mentioned contract to your firm as per the following terms:
+
+1. CONTRACT DETAILS
+   Tender ID      : _______________
+   Contract Value : ₹_______________ (Rupees _______________ Only)
+   Work Location  : _______________
+   Department     : _______________
+
+2. TERMS & CONDITIONS
+   a) The work shall be commenced within 15 days from the date of this LoA.
+   b) The contract period shall be ___ months from the date of commencement.
+   c) Performance Bank Guarantee of 5% of contract value shall be submitted within 21 days.
+   d) All applicable taxes, levies, and GST as per prevailing rates shall be borne by the contractor.
+   e) Liquidated damages @ 0.5% per week (max 10%) shall apply for delays attributable to the contractor.
+
+3. DOCUMENTS TO BE SUBMITTED WITHIN 21 DAYS
+   □ Performance Bank Guarantee (5% of contract value)
+   □ Signed and stamped copy of Agreement on stamp paper
+   □ Insurance certificates (Contractor's All Risk + Workmen Compensation)
+   □ Updated list of key personnel and equipment
+
+4. COMMENCEMENT
+   Site shall be handed over on _______________. Contractor must submit bar chart programme within 7 days of site handover.
+
+5. DISPUTE RESOLUTION
+   Any disputes arising under this contract shall be subject to the jurisdiction of courts at [City], Andhra Pradesh. Arbitration under the Arbitration and Conciliation Act, 1996, as amended.
+
+Yours faithfully,
+
+____________________________
+[Name and Designation]
+[Department]
+Government of Andhra Pradesh
+
+Cc: Finance Department, [Department], Audit Section
+---
+NOTE: This is a template document. Insert actual values before use. Get it vetted by the legal/finance department before issue.`;
+
+  const openGuide = (g: typeof guides[number]) => {
+    if (g.type === "Video") {
+      toast({
+        title: `${g.title} (${g.size})`,
+        description: "This video guide is available on the AP e-Procurement Training Portal. Contact helpdesk@apeprocurement.gov.in to request access.",
+      });
+      return;
+    }
+    if (g.type === "DOCX") {
+      downloadBlob(LOA_TEMPLATE, "Award-LoA-Template-GoAP.txt", "text/plain");
+      toast({ title: "Template downloaded", description: "Open the .txt file; copy content into your Word document." });
+      return;
+    }
+    const content = GUIDE_CONTENT[g.title];
+    if (content) {
+      printAsPdf(g.title, content);
+    } else {
+      toast({ title: "Guide unavailable", description: "This guide is being updated. Please check back shortly." });
+    }
+  };
 
   return (
     <AdminLayout
@@ -128,7 +272,7 @@ export default function HelpDesk() {
         </div>
       </div>
 
-      <Tabs defaultValue="raise" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="rounded-sm bg-secondary">
           <TabsTrigger value="raise" className="rounded-sm text-xs">Raise Ticket</TabsTrigger>
           <TabsTrigger value="tickets" className="rounded-sm text-xs">My Tickets</TabsTrigger>
@@ -184,11 +328,17 @@ export default function HelpDesk() {
               <div className="rounded-sm border border-border bg-card shadow-sm">
                 <div className="bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground">Quick Actions</div>
                 <ul className="divide-y divide-border text-xs">
-                  {["Reset Password", "Renew DSC", "Update Profile", "Request Demo", "Download Manuals"].map((a) => (
-                    <li key={a}>
-                      <a className="flex items-center justify-between px-3 py-2 hover:bg-secondary hover:text-primary">
-                        <span>{a}</span><ChevronRight className="h-3 w-3 text-muted-foreground" />
-                      </a>
+                  {[
+                    { label: "Reset Password", action: () => toast({ title: "Password reset link sent", description: "Check your registered email inbox." }) },
+                    { label: "Renew DSC",       action: () => { setActiveTab("guides"); setTimeout(() => document.getElementById("guide-dsc")?.scrollIntoView({ behavior: "smooth" }), 300); toast({ title: "DSC Installation Manual opened", description: "See Guides & Manuals tab." }); } },
+                    { label: "Update Profile",  action: () => toast({ title: "Profile update", description: "Contact your nodal officer or raise a ticket to update your registered details." }) },
+                    { label: "Request Demo",    action: () => { setForm(f => ({ ...f, subject: "Request a portal demo session", category: "Other", description: "Please schedule a demo session for our team to understand the AP e-Procurement portal features." })); toast({ title: "Demo request pre-filled", description: "Review the form below and click Submit Ticket." }); } },
+                    { label: "Download Manuals",action: () => setActiveTab("guides") },
+                  ].map((item) => (
+                    <li key={item.label}>
+                      <button onClick={item.action} className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-secondary hover:text-primary">
+                        <span>{item.label}</span><ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -282,7 +432,7 @@ export default function HelpDesk() {
                 <p className="mt-1 text-xs text-muted-foreground">{g.desc}</p>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">{g.size}</span>
-                  <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]">
+                  <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => openGuide(g)}>
                     <Download className="h-3 w-3" /> Open
                   </Button>
                 </div>

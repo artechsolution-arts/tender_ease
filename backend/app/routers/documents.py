@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import VendorDocument, DocumentValidation, Vendor, User, RoleEnum
+from app.models import VendorDocument, DocumentValidation, Vendor, User, RoleEnum, Notification, NotificationTypeEnum
 from app.models import OcrStatusEnum, ValidationStatusEnum, DocTypeEnum, OfficerDecisionEnum
 from app.core.deps import get_current_user, require_admin
-from app.core.config import UPLOADS_DIR
+from app.core.config import UPLOADS_DIR, SEAWEEDFS_ENABLED
 from app.services.ocr_service import extract_text, allowed_mime
+from app.services.seaweedfs_service import upload_to_seaweed, delete_from_seaweed
 from app.services.document_ai_service import validate_document
 
 router = APIRouter()
@@ -36,6 +37,7 @@ def _doc_dict(d: VendorDocument) -> dict:
         "mimeType": d.mime_type,
         "fileSize": d.file_size,
         "filePath": d.file_path,
+        "publicUrl": d.seaweed_url,
         "docType": d.doc_type.value,
         "ocrText": d.ocr_text,
         "ocrStatus": d.ocr_status.value,
@@ -102,6 +104,19 @@ def _process_document(doc_id: str):
             status=ValidationStatusEnum.AI_REVIEWED,
         ))
         db.commit()
+
+        # Notify all admin users that a document is ready for review
+        company = vendor_ctx["company_name"] if vendor_ctx else "Unknown vendor"
+        flag_note = " ⚠️ AI flagged this document." if result.get("flagged") else ""
+        db.add(Notification(
+            title="Document Ready for Review",
+            body=f"{doc.original_name} uploaded by {company} has been OCR-processed (AI score: {result['score']}/100 · {result['rating']}).{flag_note} Please review in Doc Validator.",
+            type=NotificationTypeEnum.info,
+            audience="Admin",
+            target_role="ADMIN",
+            channels=["in_app"],
+        ))
+        db.commit()
     except Exception as e:
         db.rollback()
         try:
@@ -139,6 +154,15 @@ async def upload_document(
     with open(file_path, "wb") as f:
         f.write(contents)
 
+    # Try SeaweedFS upload when enabled; fall back gracefully on error
+    seaweed_fid = None
+    seaweed_url = None
+    if SEAWEEDFS_ENABLED:
+        try:
+            seaweed_fid, seaweed_url = upload_to_seaweed(contents, file_name, file.content_type)
+        except Exception:
+            pass  # local file is still available as fallback
+
     try:
         doc_type_enum = DocTypeEnum(docType)
     except ValueError:
@@ -154,6 +178,8 @@ async def upload_document(
         file_size=len(contents),
         file_path=file_path,
         doc_type=doc_type_enum,
+        seaweed_fid=seaweed_fid,
+        seaweed_url=seaweed_url,
         ocr_status=OcrStatusEnum.PENDING,
     )
     db.add(doc)
@@ -241,14 +267,19 @@ def review_document(
 
 
 @router.delete("/{doc_id}")
-def delete_document(doc_id: str, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+def delete_document(doc_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(VendorDocument).filter(VendorDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    # Vendors may only delete their own documents; admins can delete any
+    if current_user.role != RoleEnum.ADMIN and doc.uploaded_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     try:
         os.remove(doc.file_path)
     except OSError:
         pass
+    if doc.seaweed_fid:
+        delete_from_seaweed(doc.seaweed_fid)
     db.delete(doc)
     db.commit()
     return {"message": "Document deleted"}

@@ -10,14 +10,15 @@ import { useToast } from "@/hooks/use-toast";
 interface Props {
   vendorId?: string;
   tenderId?: string;
+  initialDocType?: DocType;
   onSuccess?: () => void;
 }
 
 const MAX_MB = 10;
 
-export function DocumentUpload({ vendorId, tenderId, onSuccess }: Props) {
+export function DocumentUpload({ vendorId, tenderId, initialDocType, onSuccess }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [docType, setDocType] = useState<DocType>("OTHER");
+  const [docType, setDocType] = useState<DocType>(initialDocType ?? "OTHER");
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

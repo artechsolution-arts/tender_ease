@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Upload, Search, Filter, RefreshCw, ShieldAlert, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Upload, Search, Filter, RefreshCw, ShieldAlert, Clock, CheckCircle2, XCircle, Building2, Download } from "lucide-react";
 import { useT } from "@/lib/useT";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Separator } from "@/components/ui/separator";
 import { useDocuments } from "@/hooks/useDocuments";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
+import { DocumentPreview } from "@/components/documents/DocumentPreview";
 import { ValidationResult } from "@/components/documents/ValidationResult";
 import { OfficerReviewPanel } from "@/components/documents/OfficerReviewPanel";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -53,6 +54,8 @@ export default function Documents() {
   const T = useT();
   const isAdmin = currentUser?.role === "admin";
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [activeCard, setActiveCard] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<VendorDocument | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -62,10 +65,26 @@ export default function Documents() {
   );
 
   const docs = (data?.docs ?? []).filter((d) => {
+    if (flaggedOnly && !d.validation?.aiFlagged) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return d.originalName.toLowerCase().includes(q) || d.docType.toLowerCase().includes(q);
   });
+
+  function handleCardClick(label: string) {
+    if (activeCard === label) {
+      // Toggle off — clear filters
+      setStatusFilter("ALL");
+      setFlaggedOnly(false);
+      setActiveCard(null);
+      return;
+    }
+    setActiveCard(label);
+    if (label === "Total")       { setStatusFilter("ALL"); setFlaggedOnly(false); }
+    if (label === "AI Reviewed") { setStatusFilter("AI_REVIEWED"); setFlaggedOnly(false); }
+    if (label === "Approved")    { setStatusFilter("OFFICER_APPROVED"); setFlaggedOnly(false); }
+    if (label === "Flagged")     { setStatusFilter("ALL"); setFlaggedOnly(true); }
+  }
 
   const actions = (
     <div className="flex gap-2">
@@ -127,20 +146,39 @@ export default function Documents() {
         )}
       </div>
 
-      {/* Stats row (admin only) */}
+      {/* Stats row (admin only) — clickable to filter */}
       {isAdmin && data && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total", value: data.total, color: "text-gray-700" },
-            { label: "AI Reviewed", value: data.docs.filter((d) => d.validation?.status === "AI_REVIEWED").length, color: "text-purple-600" },
-            { label: "Approved", value: data.docs.filter((d) => d.validation?.status === "OFFICER_APPROVED").length, color: "text-emerald-600" },
-            { label: "Flagged", value: data.docs.filter((d) => d.validation?.aiFlagged).length, color: "text-red-600" },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl border bg-white p-4 text-center">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-500">{s.label}</p>
-            </div>
-          ))}
+            { label: "Total",       value: data.total,                                                                        color: "text-gray-700",   ring: "ring-gray-400"    },
+            { label: "AI Reviewed", value: data.docs.filter((d) => d.validation?.status === "AI_REVIEWED").length,            color: "text-purple-600", ring: "ring-purple-400"  },
+            { label: "Approved",    value: data.docs.filter((d) => d.validation?.status === "OFFICER_APPROVED").length,       color: "text-emerald-600",ring: "ring-emerald-400" },
+            { label: "Flagged",     value: data.docs.filter((d) => d.validation?.aiFlagged).length,                          color: "text-red-600",    ring: "ring-red-400"     },
+          ].map((s) => {
+            const isActive = activeCard === s.label;
+            return (
+              <button
+                key={s.label}
+                onClick={() => handleCardClick(s.label)}
+                className={`rounded-xl border bg-white p-4 text-center w-full transition-all hover:shadow-md hover:-translate-y-0.5 ${isActive ? `ring-2 ${s.ring} shadow-md -translate-y-0.5` : "hover:ring-1 hover:ring-gray-200"}`}
+              >
+                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+                {isActive && <p className="text-[10px] text-gray-400 mt-1">Click to clear</p>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active filter indicator */}
+      {activeCard && activeCard !== "Total" && (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+          <Filter className="h-3.5 w-3.5" />
+          Showing: <strong>{activeCard}</strong> documents
+          <button onClick={() => handleCardClick(activeCard)} className="ml-auto text-gray-400 hover:text-gray-700">
+            <XCircle className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
@@ -161,6 +199,7 @@ export default function Documents() {
             <thead>
               <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase tracking-wide">
                 <th className="text-left px-4 py-3">File</th>
+                {isAdmin && <th className="text-left px-4 py-3">Vendor / Uploader</th>}
                 <th className="text-left px-4 py-3">Type</th>
                 <th className="text-left px-4 py-3">AI Score</th>
                 <th className="text-left px-4 py-3">Status</th>
@@ -180,6 +219,21 @@ export default function Documents() {
                       </div>
                     </div>
                   </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      {doc.uploader ? (
+                        <div className="flex items-start gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-primary/60 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-foreground">{doc.uploader.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{doc.uploader.email}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-gray-600">
                     {DOC_TYPE_LABELS[doc.docType] || doc.docType}
                   </td>
@@ -232,10 +286,21 @@ export default function Documents() {
                   <span>·</span>
                   <span>{(selectedDoc.fileSize / 1024).toFixed(0)} KB</span>
                   {selectedDoc.uploader && (
-                    <><span>·</span><span>by {selectedDoc.uploader.name}</span></>
+                    <>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {selectedDoc.uploader.name}
+                      </span>
+                    </>
                   )}
                 </div>
               </SheetHeader>
+
+              {/* Original document preview */}
+              <DocumentPreview doc={selectedDoc} />
+
+              <Separator className="my-4" />
 
               <ValidationResult doc={selectedDoc} showRetry={isAdmin} />
 
@@ -254,9 +319,8 @@ export default function Documents() {
                   <Separator className="my-4" />
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">OCR Extracted Text</p>
-                    <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
-                      {selectedDoc.ocrText.slice(0, 2000)}
-                      {selectedDoc.ocrText.length > 2000 && "\n\n[truncated…]"}
+                    <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
+                      {selectedDoc.ocrText}
                     </pre>
                   </div>
                 </>

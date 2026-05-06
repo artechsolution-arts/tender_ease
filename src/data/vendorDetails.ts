@@ -21,6 +21,21 @@ export interface BlacklistEntry {
   relatedTender?: string;
 }
 
+export interface VendorDocument {
+  id: string;
+  name: string;
+  type: "PDF" | "JPG" | "ZIP";
+  fileRef: string;
+  uploadedOn: string;
+  size: string;
+  status: "Verified" | "Pending Review" | "Rejected";
+  verifiedBy?: string;
+  validUntil?: string;
+  docNo: string;
+  issuedBy: string;
+  group: string;
+}
+
 export interface VendorDetail {
   address: string;
   city: string;
@@ -191,4 +206,208 @@ export function getVendorDetail(v: Vendor): VendorDetail {
   }
 
   return { address, city, state, turnoverLakhs, yearsActive, employees, completedProjects, blacklistEntry };
+}
+
+// ── Registration Documents ──────────────────────────────────────────────────
+
+const VERIFYING_OFFICERS = [
+  "Sri. K. Bhaskar Reddy, Vendor Registration Officer",
+  "Smt. P. Anuradha, Helpdesk Manager",
+  "Sri. M. Krishna Rao, CVO",
+  "Sri. J. Hari Prasad, Audit Liaison",
+  "Dr. S. Padmaja, DSC & Security Officer",
+];
+
+const GST_OFFICES = [
+  "CGST & CX Commissionerate, Vijayawada",
+  "GSTIN Authority, Visakhapatnam",
+  "CGST Division, Guntur",
+  "SGST Office, Tirupati",
+];
+
+const ROC_OFFICES = [
+  "Registrar of Companies, Andhra Pradesh",
+  "Ministry of Corporate Affairs, RoC Hyderabad",
+  "RoC-AP, Visakhapatnam",
+];
+
+const LABOUR_OFFICES = [
+  "Office of the Labour Commissioner, GoAP",
+  "Assistant Labour Commissioner, Vijayawada",
+  "EPF Regional Office, Hyderabad",
+  "ESIC Regional Office, Guntur",
+];
+
+const CATEGORY_DOCS: Record<string, { name: string; issuedBy: string; group: string; validYears: number }[]> = {
+  "Civil Works": [
+    { name: "PWD Registration Certificate", issuedBy: "Chief Engineer, R&B Department, GoAP", group: "Category Licence", validYears: 3 },
+    { name: "Labour Licence (Form III)", issuedBy: "Assistant Labour Commissioner, GoAP", group: "Category Licence", validYears: 1 },
+    { name: "ISO 45001 — Occupational Safety Certificate", issuedBy: "Bureau of Indian Standards", group: "Quality Certificate", validYears: 3 },
+  ],
+  "Infrastructure": [
+    { name: "PWD Registration Certificate", issuedBy: "Chief Engineer, Public Works, GoAP", group: "Category Licence", validYears: 3 },
+    { name: "Labour Licence (Form III)", issuedBy: "Assistant Labour Commissioner, GoAP", group: "Category Licence", validYears: 1 },
+    { name: "ISO 9001:2015 Quality Certificate", issuedBy: "TÜV India Pvt. Ltd.", group: "Quality Certificate", validYears: 3 },
+  ],
+  "IT & Telecom": [
+    { name: "ISO 9001:2015 Quality Certificate", issuedBy: "TÜV Rheinland India", group: "Quality Certificate", validYears: 3 },
+    { name: "DoT Empanelment Certificate", issuedBy: "Dept. of Telecommunications, MeitY", group: "Category Licence", validYears: 2 },
+    { name: "STQC / CERT-In Empanelment Letter", issuedBy: "STQC Directorate, GoI", group: "Category Licence", validYears: 2 },
+  ],
+  "Healthcare": [
+    { name: "Drug Licence (Form 20B & 21B)", issuedBy: "State Drugs Control Administration, GoAP", group: "Category Licence", validYears: 3 },
+    { name: "WHO-GMP Certificate", issuedBy: "World Health Organization, SEARO", group: "Quality Certificate", validYears: 3 },
+    { name: "CDSCO Market Authorisation", issuedBy: "Central Drugs Standard Control Organisation", group: "Category Licence", validYears: 3 },
+  ],
+  "Services": [
+    { name: "FSSAI Food Safety Licence", issuedBy: "Food Safety and Standards Authority of India", group: "Category Licence", validYears: 1 },
+    { name: "Trade Licence", issuedBy: "Municipal Corporation / ULB", group: "Category Licence", validYears: 1 },
+  ],
+  "Transport": [
+    { name: "Motor Vehicle Authorization (Section 88)", issuedBy: "Regional Transport Office, GoAP", group: "Category Licence", validYears: 1 },
+    { name: "Fleet RTO Permit Bundle", issuedBy: "State Transport Authority, GoAP", group: "Category Licence", validYears: 1 },
+  ],
+  "Facilities": [
+    { name: "PWD Registration Certificate", issuedBy: "Chief Engineer, Public Works, GoAP", group: "Category Licence", validYears: 3 },
+    { name: "BEE / Energy Audit Accreditation", issuedBy: "Bureau of Energy Efficiency, GoI", group: "Quality Certificate", validYears: 2 },
+  ],
+};
+
+function fmtDocDate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+export function getVendorDocuments(v: Vendor): VendorDocument[] {
+  const s = v.id;
+  const regDate = new Date(v.registeredOn);
+
+  function uploadDate(daysAfter: number): string {
+    const d = new Date(regDate);
+    d.setDate(d.getDate() + daysAfter);
+    return fmtDocDate(d);
+  }
+
+  function expiryDate(fromReg: number, years: number): string {
+    const d = new Date(regDate);
+    d.setFullYear(d.getFullYear() + fromReg + years);
+    return fmtDocDate(d);
+  }
+
+  const officer = pick(VERIFYING_OFFICERS, s, 50);
+  const gstOffice = pick(GST_OFFICES, s, 51);
+  const rocOffice = pick(ROC_OFFICES, s, 52);
+  const labourOffice = pick(LABOUR_OFFICES, s, 53);
+
+  const gstNo = v.gst || `37AABC${s.slice(-4)}Z${Math.floor(seededRand(s, 54) * 9 + 1)}`;
+  const panNo = v.pan || `AABC${s.slice(-4)}Q`;
+  const epfNo = `AP/${String(Math.floor(seededRand(s, 55) * 9000 + 1000))}/${String(Math.floor(seededRand(s, 56) * 90000 + 10000))}`;
+  const esiNo = `AP-${String(Math.floor(seededRand(s, 57) * 90000 + 10000))}`;
+  const cinNo = `U${Math.floor(seededRand(s, 58) * 9 + 1)}0000AP${2010 + Math.floor(seededRand(s, 59) * 10)}PTC${Math.floor(seededRand(s, 60) * 900000 + 100000)}`;
+
+  function docStatus(idx: number): "Verified" | "Pending Review" | "Rejected" {
+    const r = seededRand(s, 70 + idx);
+    if (v.blacklisted) return r > 0.5 ? "Verified" : r > 0.2 ? "Pending Review" : "Rejected";
+    return r > 0.12 ? "Verified" : "Pending Review";
+  }
+
+  const SIZES = ["412 KB", "780 KB", "1.1 MB", "1.4 MB", "2.2 MB", "3.1 MB", "560 KB", "890 KB"];
+
+  const baseDocs: VendorDocument[] = [
+    {
+      id: `${s}-D01`, name: "GST Registration Certificate", type: "PDF",
+      fileRef: `${s}_GST_Reg.pdf`, uploadedOn: uploadDate(0),
+      size: pick(SIZES, s, 61), status: docStatus(1),
+      verifiedBy: docStatus(1) === "Verified" ? officer : undefined,
+      validUntil: undefined, docNo: gstNo, issuedBy: gstOffice, group: "Tax & Compliance",
+    },
+    {
+      id: `${s}-D02`, name: "PAN Card (Self-attested Copy)", type: "PDF",
+      fileRef: `${s}_PAN.pdf`, uploadedOn: uploadDate(0),
+      size: pick(SIZES, s, 62), status: docStatus(2),
+      verifiedBy: docStatus(2) === "Verified" ? officer : undefined,
+      validUntil: undefined, docNo: panNo, issuedBy: "Income Tax Department, GoI", group: "Tax & Compliance",
+    },
+    {
+      id: `${s}-D03`, name: "Certificate of Incorporation / Trade Licence", type: "PDF",
+      fileRef: `${s}_Incorporation.pdf`, uploadedOn: uploadDate(1),
+      size: pick(SIZES, s, 63), status: docStatus(3),
+      verifiedBy: docStatus(3) === "Verified" ? officer : undefined,
+      validUntil: expiryDate(0, 5), docNo: cinNo, issuedBy: rocOffice, group: "Legal & Identity",
+    },
+    {
+      id: `${s}-D04`, name: `Audited Balance Sheet — FY ${2021 + Math.floor(seededRand(s, 64) * 2)}-${22 + Math.floor(seededRand(s, 64) * 2)}`, type: "PDF",
+      fileRef: `${s}_BS_Y1.pdf`, uploadedOn: uploadDate(2),
+      size: pick(SIZES, s, 65), status: docStatus(4),
+      verifiedBy: docStatus(4) === "Verified" ? officer : undefined,
+      validUntil: undefined,
+      docNo: `CA/${Math.floor(seededRand(s, 75) * 90000 + 10000)}`, issuedBy: "Chartered Accountant (ICAI Member)", group: "Financial Records",
+    },
+    {
+      id: `${s}-D05`, name: `Audited Balance Sheet — FY ${2022 + Math.floor(seededRand(s, 66) * 1)}-${23 + Math.floor(seededRand(s, 66) * 1)}`, type: "PDF",
+      fileRef: `${s}_BS_Y2.pdf`, uploadedOn: uploadDate(2),
+      size: pick(SIZES, s, 66), status: docStatus(5),
+      verifiedBy: docStatus(5) === "Verified" ? officer : undefined,
+      validUntil: undefined,
+      docNo: `CA/${Math.floor(seededRand(s, 76) * 90000 + 10000)}`, issuedBy: "Chartered Accountant (ICAI Member)", group: "Financial Records",
+    },
+    {
+      id: `${s}-D06`, name: "Audited Balance Sheet — FY 2024-25", type: "PDF",
+      fileRef: `${s}_BS_Y3.pdf`, uploadedOn: uploadDate(2),
+      size: pick(SIZES, s, 67), status: docStatus(6),
+      verifiedBy: docStatus(6) === "Verified" ? officer : undefined,
+      validUntil: undefined,
+      docNo: `CA/${Math.floor(seededRand(s, 77) * 90000 + 10000)}`, issuedBy: "Chartered Accountant (ICAI Member)", group: "Financial Records",
+    },
+    {
+      id: `${s}-D07`, name: "EPF Registration Certificate", type: "PDF",
+      fileRef: `${s}_EPF.pdf`, uploadedOn: uploadDate(3),
+      size: pick(SIZES, s, 68), status: docStatus(7),
+      verifiedBy: docStatus(7) === "Verified" ? officer : undefined,
+      validUntil: undefined, docNo: epfNo, issuedBy: "Employees' Provident Fund Organisation, GoI", group: "Labour & Social Security",
+    },
+    {
+      id: `${s}-D08`, name: "ESI Registration Certificate", type: "PDF",
+      fileRef: `${s}_ESI.pdf`, uploadedOn: uploadDate(3),
+      size: pick(SIZES, s, 69), status: docStatus(8),
+      verifiedBy: docStatus(8) === "Verified" ? officer : undefined,
+      validUntil: undefined, docNo: esiNo, issuedBy: labourOffice, group: "Labour & Social Security",
+    },
+    {
+      id: `${s}-D09`, name: "Cancelled Cheque (Primary Bank Account)", type: "JPG",
+      fileRef: `${s}_Cheque.jpg`, uploadedOn: uploadDate(1),
+      size: pick(SIZES, s, 70), status: docStatus(9),
+      verifiedBy: docStatus(9) === "Verified" ? officer : undefined,
+      validUntil: undefined,
+      docNo: `AC/${String(Math.floor(seededRand(s, 78) * 9000000000 + 1000000000)).slice(0, 12)}`,
+      issuedBy: pick(["State Bank of India", "Andhra Bank", "Union Bank of India", "Canara Bank", "HDFC Bank"], s, 72),
+      group: "Banking & Financial",
+    },
+    {
+      id: `${s}-D10`, name: "Power of Attorney / Authorisation Letter", type: "PDF",
+      fileRef: `${s}_POA.pdf`, uploadedOn: uploadDate(1),
+      size: pick(SIZES, s, 71), status: docStatus(10),
+      verifiedBy: docStatus(10) === "Verified" ? officer : undefined,
+      validUntil: expiryDate(0, 2), docNo: `POA/${v.id}/${new Date(v.registeredOn).getFullYear()}`,
+      issuedBy: "Company Secretary / Notary Public", group: "Legal & Identity",
+    },
+  ];
+
+  const catTemplates = CATEGORY_DOCS[v.category] ?? CATEGORY_DOCS["Services"];
+  const catDocs: VendorDocument[] = catTemplates.map((t, i) => {
+    const st = docStatus(20 + i);
+    const yr = new Date(v.registeredOn).getFullYear();
+    const seq = Math.floor(seededRand(s, 80 + i) * 90000 + 10000);
+    return {
+      id: `${s}-DC${i + 1}`, name: t.name, type: "PDF",
+      fileRef: `${s}_${t.group.replace(/\s/g, "")}_${i + 1}.pdf`,
+      uploadedOn: uploadDate(4 + i),
+      size: pick(SIZES, s, 82 + i), status: st,
+      verifiedBy: st === "Verified" ? officer : undefined,
+      validUntil: expiryDate(0, t.validYears),
+      docNo: `${v.category.slice(0, 3).toUpperCase()}/${yr}/${seq}`,
+      issuedBy: t.issuedBy, group: t.group,
+    };
+  });
+
+  return [...baseDocs, ...catDocs];
 }

@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Search, Users, Mail, Phone, Building2, ShieldCheck, AlertTriangle, CheckCircle, XCircle, Sparkles, Fingerprint, FileSearch, Briefcase, FileCheck, Star, MapPin, IndianRupee, Calendar, Hash, AlertOctagon, ClipboardList } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Search, Users, Mail, Phone, Building2, ShieldCheck, AlertTriangle, CheckCircle, XCircle, Sparkles, Fingerprint, FileSearch, Briefcase, FileCheck, Star, MapPin, IndianRupee, Calendar, Hash, AlertOctagon, ClipboardList, FileText, CheckCircle2, Clock, XCircle as XCircleIcon, Download, Eye, Brain, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdmin, fmtDate, type PendingVendor, type Vendor } from "@/store/admin-store";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -12,7 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/lib/useT";
-import { getVendorDetail, type CompletedProject } from "@/data/vendorDetails";
+import { getVendorDetail, getVendorDocuments, type CompletedProject, type VendorDocument } from "@/data/vendorDetails";
+import { printAsPdf } from "@/lib/printPdf";
+import { useDocuments } from "@/hooks/useDocuments";
+import { DocumentPreview } from "@/components/documents/DocumentPreview";
+import { ValidationResult } from "@/components/documents/ValidationResult";
+import { OfficerReviewPanel } from "@/components/documents/OfficerReviewPanel";
+import { DOC_TYPE_LABELS, RATING_CONFIG, STATUS_CONFIG, type VendorDocument as ApiVendorDoc } from "@/types/documents";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -28,13 +35,336 @@ function fmtINR(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
 
+const DOC_STATUS_META = {
+  "Verified":       { icon: CheckCircle2, cls: "text-success", bg: "bg-success/10 text-success ring-success/30" },
+  "Pending Review": { icon: Clock,        cls: "text-warning", bg: "bg-warning/10 text-warning ring-warning/30" },
+  "Rejected":       { icon: XCircleIcon,  cls: "text-destructive", bg: "bg-destructive/10 text-destructive ring-destructive/30" },
+} as const;
+
+function DocStatusBadge({ status }: { status: VendorDocument["status"] }) {
+  const m = DOC_STATUS_META[status];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${m.bg}`}>
+      <m.icon className="h-2.5 w-2.5" /> {status}
+    </span>
+  );
+}
+
+// ── Uploaded Documents section (real API) inside Reg. Docs tab ───────────────
+function VendorUploadedDocs({ vendorId }: { vendorId: string }) {
+  const { data, isLoading } = useDocuments({ vendorId });
+  const docs: ApiVendorDoc[] = data?.docs ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading uploaded documents…
+      </div>
+    );
+  }
+  if (docs.length === 0) return null;
+
+  return (
+    <div>
+      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        <Brain className="h-3 w-3 text-primary" /> Uploaded Documents
+        <span className="font-normal">({docs.length})</span>
+      </p>
+      <div className="space-y-2">
+        {docs.map((doc) => {
+          const v = doc.validation;
+          const rating = v ? RATING_CONFIG[v.aiRating] : null;
+          const statusCfg = v ? STATUS_CONFIG[v.status] : null;
+          const isProcessing = doc.ocrStatus === "PENDING" || doc.ocrStatus === "PROCESSING";
+          return (
+            <div key={doc.id} className="rounded-sm border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
+                  <div className="min-w-0">
+                    <p className="max-w-[200px] truncate text-sm font-semibold leading-snug text-foreground">{doc.originalName}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {DOC_TYPE_LABELS[doc.docType] || doc.docType} · {(doc.fileSize / 1024).toFixed(0)} KB
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {rating ? (
+                    <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                      {v!.aiScore} · {rating.label}
+                    </span>
+                  ) : isProcessing ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Brain className="h-3 w-3 animate-pulse" /> OCR Running
+                    </span>
+                  ) : null}
+                  <span className={`text-[10px] font-semibold ${statusCfg?.color ?? "text-muted-foreground"}`}>
+                    {statusCfg?.label ?? "Processing"}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground/70">Uploaded</span>{" "}
+                {new Date(doc.createdAt).toLocaleDateString("en-IN")}
+                {doc.uploader && (
+                  <> · <span className="font-semibold text-foreground/70">by</span> {doc.uploader.name}</>
+                )}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── OCR Documents tab (real API data) ─────────────────────────────────────────
+function VendorOCRDocsTab({ vendorId }: { vendorId: string }) {
+  const { data, isLoading, refetch } = useDocuments({ vendorId });
+  const [selectedDoc, setSelectedDoc] = useState<ApiVendorDoc | null>(null);
+  const docs: ApiVendorDoc[] = data?.docs ?? [];
+
+  const approved = docs.filter((d) => d.validation?.status === "OFFICER_APPROVED").length;
+  const flagged  = docs.filter((d) => d.validation?.aiFlagged).length;
+  const pending  = docs.filter((d) => !d.validation).length;
+
+  return (
+    <>
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wide text-primary">AI OCR Documents</span>
+          {!isLoading && <span className="text-xs text-muted-foreground">({docs.length} uploaded)</span>}
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
+          <RefreshCw className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Summary */}
+      {docs.length > 0 && (
+        <div className="mb-3 grid grid-cols-4 gap-2 text-center text-xs">
+          {([
+            ["Total",    docs.length, "text-primary"],
+            ["Approved", approved,    "text-success"],
+            ["Flagged",  flagged,     "text-destructive"],
+            ["Pending",  pending,     "text-warning"],
+          ] as [string, number, string][]).map(([label, count, cls]) => (
+            <div key={label} className="rounded-sm border border-border/60 bg-secondary/20 py-2">
+              <p className={`text-lg font-bold ${cls}`}>{count}</p>
+              <p className="text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+          <RefreshCw className="h-4 w-4 animate-spin" /> Loading…
+        </div>
+      ) : docs.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+          <Upload className="h-8 w-8 opacity-30" />
+          <p className="text-sm">No documents uploaded by this vendor yet.</p>
+          <p className="text-xs">Documents uploaded via the registration form will appear here with AI OCR scores.</p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-sm border border-border">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2 text-left">File</th>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">AI Score</th>
+                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-3 py-2 text-left">Date</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {docs.map((doc) => {
+                const v = doc.validation;
+                const rating = v ? RATING_CONFIG[v.aiRating] : null;
+                const statusCfg = v ? STATUS_CONFIG[v.status] : null;
+                const isProcessing = doc.ocrStatus === "PROCESSING" || doc.ocrStatus === "PENDING";
+                return (
+                  <tr key={doc.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setSelectedDoc(doc)}>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {v?.aiFlagged && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
+                        <p className="font-medium text-foreground max-w-[140px] truncate">{doc.originalName}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{(doc.fileSize / 1024).toFixed(0)} KB</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground">
+                      {DOC_TYPE_LABELS[doc.docType] || doc.docType}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {rating ? (
+                        <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                          {v!.aiScore} · {rating.label}
+                        </span>
+                      ) : isProcessing ? (
+                        <span className="flex items-center gap-1 text-[10px] text-info">
+                          <Brain className="h-3 w-3 animate-pulse" /> OCR…
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Queued
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-[10px] font-semibold ${statusCfg?.color ?? "text-muted-foreground"}`}>
+                        {statusCfg?.label ?? "Processing"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{new Date(doc.createdAt).toLocaleDateString("en-IN")}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      <Button variant="ghost" size="sm" className="h-6 gap-1 rounded-sm px-2 text-[10px]">
+                        <Eye className="h-3 w-3" /> Review
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Detail sheet */}
+      <Sheet open={!!selectedDoc} onOpenChange={(o) => !o && setSelectedDoc(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          {selectedDoc && (
+            <>
+              <SheetHeader className="mb-4">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <Brain className="h-5 w-5 text-primary" />
+                  {selectedDoc.originalName}
+                </SheetTitle>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>{DOC_TYPE_LABELS[selectedDoc.docType]}</span>
+                  <span>·</span>
+                  <span>{(selectedDoc.fileSize / 1024).toFixed(0)} KB</span>
+                  {selectedDoc.uploader && (
+                    <><span>·</span><span>by {selectedDoc.uploader.name}</span></>
+                  )}
+                </div>
+              </SheetHeader>
+
+              {/* Original document preview */}
+              <DocumentPreview doc={selectedDoc} />
+
+              <Separator className="my-4" />
+
+              <ValidationResult doc={selectedDoc} showRetry />
+
+              {selectedDoc.validation && (
+                <>
+                  <Separator className="my-4" />
+                  <OfficerReviewPanel doc={selectedDoc} onDone={() => setSelectedDoc(null)} />
+                </>
+              )}
+
+              {selectedDoc.ocrText && (
+                <>
+                  <Separator className="my-4" />
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">OCR Extracted Text</p>
+                    <pre className="text-xs text-muted-foreground bg-secondary/40 rounded-sm p-3 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
+                      {selectedDoc.ocrText}
+                    </pre>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
 function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; open: boolean; onClose: () => void }) {
+  const [docStatuses, setDocStatuses] = useState<Record<string, "Verified" | "Rejected">>({});
+
   if (!vendor) return null;
   const detail = getVendorDetail(vendor);
+  const docs = getVendorDocuments(vendor);
+
+  const approveDoc = (id: string) => setDocStatuses((prev) => ({ ...prev, [id]: "Verified" }));
+  const rejectDoc  = (id: string) => setDocStatuses((prev) => ({ ...prev, [id]: "Rejected" }));
+
+  const groups = Array.from(new Set(docs.map((d) => d.group)));
+
+  const handleViewDoc = (doc: VendorDocument) => {
+    const validUntilRow = doc.validUntil
+      ? `<div class="kv"><span class="k">Valid Until:</span>${doc.validUntil}</div>`
+      : "";
+    const verifiedRow = doc.verifiedBy
+      ? `<div class="kv"><span class="k">Verified By:</span>${doc.verifiedBy}</div>`
+      : "";
+    const bodyHtml = `
+      <div class="doc-title">Registered Document — ${doc.name}</div>
+      <div class="section-head">Document Details</div>
+      <div class="kv"><span class="k">Vendor ID:</span>${vendor.id}</div>
+      <div class="kv"><span class="k">Company:</span>${vendor.companyName}</div>
+      <div class="kv"><span class="k">Document Name:</span>${doc.name}</div>
+      <div class="kv"><span class="k">Document No.:</span>${doc.docNo}</div>
+      <div class="kv"><span class="k">Issued By:</span>${doc.issuedBy}</div>
+      <div class="kv"><span class="k">File Reference:</span>${doc.fileRef}</div>
+      <div class="kv"><span class="k">File Type:</span>${doc.type}</div>
+      <div class="kv"><span class="k">File Size:</span>${doc.size}</div>
+      <div class="kv"><span class="k">Uploaded On:</span>${doc.uploadedOn}</div>
+      ${validUntilRow}
+      <div class="kv"><span class="k">Verification Status:</span><strong style="color:${doc.status === "Verified" ? "#27ae60" : doc.status === "Rejected" ? "#c0392b" : "#e67e22"}">${doc.status}</strong></div>
+      ${verifiedRow}
+      <div class="section-head">Declaration</div>
+      <p style="font-size:10pt;margin:6px 0">This document was submitted by M/s <strong>${vendor.companyName}</strong> (${vendor.id}) during vendor registration on ${vendor.registeredOn} via the AP e-Procurement Portal. The authenticity of this document has been ${doc.status === "Verified" ? "verified by the designated officer" : doc.status === "Rejected" ? "found inconsistent and marked rejected" : "recorded as pending review"}.</p>
+      <div class="stamp">
+        <p>Verification Officer: ${doc.verifiedBy ?? "—"}</p>
+        <p style="margin-top:36px;border-top:1px solid #bbb;padding-top:6px">Authorised Signatory — Vendor Management Cell</p>
+        <p>Date: _______________________</p>
+      </div>
+    `;
+    printAsPdf(`Document — ${doc.name}`, bodyHtml);
+  };
+
+  const handleDownloadDocList = () => {
+    const rows = docs.map((d) =>
+      `<tr><td style="font-family:monospace;font-size:9pt">${d.id}</td><td>${d.name}</td><td>${d.group}</td><td>${d.docNo}</td><td>${d.issuedBy}</td><td>${d.uploadedOn}</td><td>${d.validUntil ?? "—"}</td><td style="color:${d.status === "Verified" ? "#27ae60" : d.status === "Rejected" ? "#c0392b" : "#e67e22"}">${d.status}</td></tr>`
+    ).join("");
+    const verifiedCount = docs.filter((d) => d.status === "Verified").length;
+    const pendingCount = docs.filter((d) => d.status === "Pending Review").length;
+    const rejectedCount = docs.filter((d) => d.status === "Rejected").length;
+    const bodyHtml = `
+      <div class="doc-title">Vendor Registration — Document Register</div>
+      <div class="kv"><span class="k">Vendor ID:</span>${vendor.id}</div>
+      <div class="kv"><span class="k">Company Name:</span>${vendor.companyName}</div>
+      <div class="kv"><span class="k">Category:</span>${vendor.category}</div>
+      <div class="kv"><span class="k">GST No.:</span>${vendor.gst || "—"}</div>
+      <div class="kv"><span class="k">PAN No.:</span>${vendor.pan || "—"}</div>
+      <div class="kv"><span class="k">Registered On:</span>${vendor.registeredOn}</div>
+      <div class="kv"><span class="k">Total Documents:</span>${docs.length} &nbsp;|&nbsp; Verified: ${verifiedCount} &nbsp;|&nbsp; Pending: ${pendingCount} &nbsp;|&nbsp; Rejected: ${rejectedCount}</div>
+      <div class="section-head">Document List</div>
+      <table>
+        <thead><tr><th>Doc ID</th><th>Document Name</th><th>Group</th><th>Doc No.</th><th>Issued By</th><th>Uploaded</th><th>Valid Until</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="stamp">
+        <p>Vendor Management Cell — AP e-Procurement Portal v4.2.1</p>
+        <p style="margin-top:36px;border-top:1px solid #bbb;padding-top:6px">Authorised Signatory</p>
+        <p>Date: _______________________</p>
+      </div>
+    `;
+    printAsPdf(`Document Register — ${vendor.id}`, bodyHtml);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-primary/10">
@@ -66,9 +396,15 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
             <TabsTrigger value="projects" className="flex-1 text-xs">
               Projects ({detail.completedProjects.length})
             </TabsTrigger>
+            <TabsTrigger value="documents" className="flex-1 text-xs">
+              Reg. Docs
+            </TabsTrigger>
+            <TabsTrigger value="ocr-docs" className="flex-1 text-xs">
+              <Brain className="mr-1 h-3 w-3" /> OCR Review
+            </TabsTrigger>
             {vendor.blacklisted && (
               <TabsTrigger value="blacklist" className="flex-1 text-xs text-destructive">
-                Blacklist Info
+                Blacklist
               </TabsTrigger>
             )}
           </TabsList>
@@ -153,6 +489,115 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* ── DOCUMENTS ── */}
+          <TabsContent value="documents" className="mt-3 space-y-3">
+            {/* Summary strip */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Total Docs",       value: docs.length, cls: "text-primary" },
+                { label: "Verified",          value: docs.filter((d) => (docStatuses[d.id] ?? d.status) === "Verified").length,       cls: "text-success" },
+                { label: "Pending / Rejected",value: docs.filter((d) => (docStatuses[d.id] ?? d.status) !== "Verified").length,      cls: "text-warning" },
+              ].map(({ label, value, cls }) => (
+                <div key={label} className="rounded-sm border border-border/60 bg-secondary/20 px-3 py-2 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                  <p className={`text-xl font-bold ${cls}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Print all button */}
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 rounded-sm text-[11px]" onClick={handleDownloadDocList}>
+                <Download className="h-3 w-3" /> Print Document Register
+              </Button>
+            </div>
+
+            {/* Real uploaded documents from API */}
+            <VendorUploadedDocs vendorId={vendor.id} />
+
+            {/* Pre-registered documents (static / seeded) */}
+            {groups.length > 0 && (
+              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <FileCheck className="h-3 w-3 text-primary" /> Pre-Registered Documents
+              </p>
+            )}
+            {groups.map((group) => (
+              <div key={group}>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group}</p>
+                <div className="space-y-2">
+                  {docs.filter((d) => d.group === group).map((doc) => {
+                    const effectiveStatus = docStatuses[doc.id] ?? doc.status;
+                    const isPending = effectiveStatus === "Pending Review";
+                    return (
+                    <div key={doc.id} className={`rounded-sm border p-3 transition-colors ${isPending ? "border-warning/40 bg-warning/5" : "border-border/60 bg-secondary/10"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold leading-snug text-foreground">{doc.name}</p>
+                            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{doc.docNo}</p>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <DocStatusBadge status={effectiveStatus} />
+                          <Button size="sm" variant="ghost" className="h-6 gap-1 rounded-sm px-2 text-[10px] text-primary hover:bg-primary/10" onClick={() => handleViewDoc(doc)}>
+                            <Eye className="h-3 w-3" /> View
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <div><span className="font-semibold text-foreground/70">Issued by</span> {doc.issuedBy}</div>
+                        <div><span className="font-semibold text-foreground/70">Type</span> {doc.type} · {doc.size}</div>
+                        <div><span className="font-semibold text-foreground/70">Uploaded</span> {doc.uploadedOn}</div>
+                        {doc.validUntil && (
+                          <div>
+                            <span className="font-semibold text-foreground/70">Valid until</span>{" "}
+                            <span className={new Date(doc.validUntil) < new Date() ? "text-destructive font-semibold" : ""}>
+                              {doc.validUntil}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {effectiveStatus === "Verified" && (
+                        <p className="mt-1.5 flex items-center gap-1 text-[10px] text-success">
+                          <CheckCircle2 className="h-3 w-3" /> {docStatuses[doc.id] ? "Sri. R. Venkatesh, IAS (Tender Inviting Authority)" : doc.verifiedBy}
+                        </p>
+                      )}
+
+                      {isPending && (
+                        <div className="mt-3 flex items-center gap-2 border-t border-warning/20 pt-3">
+                          <p className="flex-1 text-[10px] text-warning font-medium">Officer action required</p>
+                          <Button
+                            size="sm"
+                            className="h-6 gap-1 rounded-sm px-2.5 text-[10px] bg-success text-success-foreground hover:bg-success/90"
+                            onClick={() => approveDoc(doc.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" /> Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-6 gap-1 rounded-sm px-2.5 text-[10px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => rejectDoc(doc.id)}
+                          >
+                            <XCircle className="h-3 w-3" /> Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
+          {/* ── OCR DOCUMENTS ── */}
+          <TabsContent value="ocr-docs" className="mt-3">
+            <VendorOCRDocsTab vendorId={vendor.id} />
           </TabsContent>
 
           {/* ── BLACKLIST ── */}

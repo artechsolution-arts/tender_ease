@@ -59,4 +59,10 @@ apiClient.interceptors.response.use(
   }
 );
 
+export const BACKEND_ROOT: string = BASE_URL.replace(/\/api\/?$/, "");
+
+export function getUploadUrl(fileName: string): string {
+  return `${BACKEND_ROOT}/uploads/${encodeURIComponent(fileName)}`;
+}
+
 export default apiClient;

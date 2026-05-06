@@ -14,7 +14,7 @@ import {
 import { TenderStatusBadge } from "@/components/admin/TenderStatusBadge";
 import { TenderFormDialog } from "@/components/admin/TenderFormDialog";
 import { useAdmin, fmtINR, fmtDate, fmtDateTime, nextStatuses, TENDER_STATUSES, type Tender, type TenderStatus } from "@/store/admin-store";
-import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award, Tag, X } from "lucide-react";
+import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award, Tag, X, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/useT";
 
@@ -130,7 +130,7 @@ export default function Tenders() {
             </TableHeader>
             <TableBody>
               {rows.map((t) => (
-                <TableRow key={t.id} className="border-border/60">
+                <TableRow key={t.id} className="border-border/60 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setViewing(t)}>
                   <TableCell className="pl-4 font-mono text-xs">{t.id}</TableCell>
                   <TableCell className="max-w-[260px]">
                     <p className="font-medium text-foreground line-clamp-1">{t.name}</p>
@@ -141,7 +141,7 @@ export default function Tenders() {
                   <TableCell className="text-xs">{fmtDate(t.endDate)}</TableCell>
                   <TableCell className="text-xs text-center">{t.eligibleVendorIds.length}</TableCell>
                   <TableCell><TenderStatusBadge status={t.status} /></TableCell>
-                  <TableCell className="pr-4">
+                  <TableCell className="pr-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_view")} onClick={() => setViewing(t)}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_edit")} onClick={() => setEditing(t)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -191,7 +191,33 @@ export default function Tenders() {
                 </div>
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase text-primary">{T("tenders_dialog_docs")}</p>
-                  <ul className="space-y-1 text-xs">{viewing.documents.map((d) => <li key={d.id} className="rounded-sm bg-secondary/40 px-2 py-1">📎 {d.name} <span className="text-muted-foreground">· {d.size}</span></li>)}</ul>
+                  <ul className="divide-y divide-border rounded-sm border border-border">
+                    {viewing.documents.map((d) => (
+                      <li key={d.id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-secondary/30 transition-colors">
+                        <span className="flex items-center gap-2 font-medium min-w-0">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span className="truncate">{d.name}</span>
+                          {d.size && <span className="text-muted-foreground shrink-0">· {d.size}</span>}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 shrink-0 gap-1 rounded-sm px-2 text-[10px]"
+                          onClick={() => {
+                            const blob = new Blob([`Tender Document: ${d.name}\nTender: ${viewing.name} (${viewing.id})\nDepartment: ${viewing.department}\nFile Size: ${d.size || "—"}\n\nThis document is part of the AP e-Procurement tender notice.\nReference: ${viewing.id}\nIssued by: ${viewing.department}\nDate: ${new Date().toLocaleDateString("en-IN")}`], { type: "text/plain" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = d.name.replace(/\s+/g, "_") + ".txt";
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3 w-3" /> Download
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase text-primary">{T("tenders_dialog_eligible_vendors")} ({viewing.eligibleVendorIds.length})</p>

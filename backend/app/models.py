@@ -286,6 +286,8 @@ class VendorDocument(Base):
     file_size = Column(Integer, nullable=False)
     file_path = Column(String, nullable=False)
     doc_type = Column(SAEnum(DocTypeEnum), default=DocTypeEnum.OTHER)
+    seaweed_fid = Column(String, nullable=True)
+    seaweed_url = Column(String, nullable=True)
     ocr_text = Column(Text, nullable=True)
     ocr_status = Column(SAEnum(OcrStatusEnum), default=OcrStatusEnum.PENDING)
     ocr_error = Column(String, nullable=True)

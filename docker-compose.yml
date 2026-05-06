@@ -2,6 +2,30 @@ name: ap-eprocurement
 
 services:
 
+  # ─── SeaweedFS Master ─────────────────────────────────────────────────────
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: "master -ip=seaweedfs-master -port=9333"
+    ports:
+      - "9333:9333"
+    networks:
+      - internal
+
+  # ─── SeaweedFS Volume ─────────────────────────────────────────────────────
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: "volume -mserver=seaweedfs-master:9333 -port=9080 -ip=seaweedfs-volume -publicUrl=localhost:9080"
+    ports:
+      - "9080:9080"
+    depends_on:
+      - seaweedfs-master
+    volumes:
+      - seaweedfs_data:/data
+    networks:
+      - internal
+
   # ─── Python FastAPI Backend ───────────────────────────────────────────────
   backend:
     build:
@@ -21,11 +45,17 @@ services:
       OLLAMA_MODEL:         ${OLLAMA_MODEL:-llama3.2:3b}
       OLLAMA_VISION_MODEL:  ${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
       UPLOADS_DIR:          /app/uploads
+      SEAWEEDFS_ENABLED:    "true"
+      SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
+      SEAWEEDFS_PUBLIC_URL: http://localhost:9080
       SMTP_HOST:            ${SMTP_HOST:-}
       SMTP_PORT:            ${SMTP_PORT:-587}
       SMTP_USER:            ${SMTP_USER:-}
       SMTP_PASS:            ${SMTP_PASS:-}
       SMTP_FROM:            ${SMTP_FROM:-AP e-Procurement <noreply@apeprocurement.gov.in>}
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
     volumes:
       - document_uploads:/app/uploads
     extra_hosts:
@@ -57,6 +87,8 @@ services:
 
 volumes:
   document_uploads:
+    driver: local
+  seaweedfs_data:
     driver: local
 
 networks:

@@ -1,3 +1,4 @@
+import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -25,22 +26,24 @@ import {
 } from "lucide-react";
 
 const main = [
-  { title: "Overview", icon: LayoutDashboard, active: true },
-  { title: "Live Tenders", icon: FileText },
-  { title: "Bidders", icon: Users },
-  { title: "Bid Evaluation", icon: FileCheck2 },
-  { title: "Awards / LoA", icon: Gavel },
-  { title: "AI Insights", icon: Sparkles },
-  { title: "MIS Reports", icon: BarChart3 },
-  { title: "Compliance / CVC", icon: ShieldCheck },
+  { title: "Overview",         icon: LayoutDashboard, to: "/" },
+  { title: "Live Tenders",     icon: FileText,        to: "/tenders" },
+  { title: "Bidders",          icon: Users,           to: "/vendors" },
+  { title: "Bid Evaluation",   icon: FileCheck2,      to: "/bid-evaluation" },
+  { title: "Awards / LoA",     icon: Gavel,           to: "/awards" },
+  { title: "AI Insights",      icon: Sparkles,        to: "/ai-insights" },
+  { title: "MIS Reports",      icon: BarChart3,       to: "/reports" },
+  { title: "Compliance / CVC", icon: ShieldCheck,     to: "/compliance" },
 ];
 
 const secondary = [
-  { title: "Settings", icon: Settings },
-  { title: "Help", icon: LifeBuoy },
+  { title: "Settings", icon: Settings, to: "/help" },
+  { title: "Help",     icon: LifeBuoy, to: "/help" },
 ];
 
 export function DashboardSidebar() {
+  const { pathname } = useLocation();
+
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="px-4 py-5">
@@ -60,17 +63,23 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {main.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    isActive={item.active}
-                    className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {main.map((item) => {
+                const isActive = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                    >
+                      <Link to={item.to}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -80,9 +89,11 @@ export function DashboardSidebar() {
             <SidebarMenu>
               {secondary.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
+                  <SidebarMenuButton asChild isActive={pathname === item.to} className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground">
+                    <Link to={item.to}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

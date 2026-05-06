@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShieldCheck, AlertTriangle, CheckCircle2, FileText, Search, Download, Eye, Scale, Lock, BookOpen, AlertOctagon } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ShieldCheck, AlertTriangle, CheckCircle2, FileText, Search, Download, Eye, Scale, Lock, BookOpen, AlertOctagon, Building2 } from "lucide-react";
 import { useT } from "@/lib/useT";
+import { printAsPdf } from "@/lib/printPdf";
+import { toast } from "sonner";
 
 type Severity = "low" | "medium" | "high";
 
@@ -41,7 +44,10 @@ export default function Compliance() {
   const { tenders, vendors } = useAdmin();
   const T = useT();
   const [selected, setSelected] = useState<Finding | null>(null);
+  const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, Finding["status"]>>({});
 
   useEffect(() => {
     document.title = "Compliance & CVC — AP e-Procurement";
@@ -55,9 +61,66 @@ export default function Compliance() {
     { id: "CVC-2026-007", tenderId: tenders[0]?.id ?? "TND-2025-041", category: "Cartel Risk", severity: "high", raisedOn: "2026-03-28", status: "Under Review", observation: "Three bidders submitted bids within ±0.4% of each other, all from same district.", action: "Refer to Competition Commission of India (CCI) for examination." },
   ], [tenders]);
 
-  const filtered = findings.filter((f) =>
+  const displayFindings = findings.map(f => statusOverrides[f.id] ? { ...f, status: statusOverrides[f.id] } : f);
+
+  const filtered = displayFindings.filter((f) =>
     !search || f.id.toLowerCase().includes(search.toLowerCase()) || f.tenderId.toLowerCase().includes(search.toLowerCase()) || f.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleFileATR = (f: Finding) => {
+    setStatusOverrides(prev => ({ ...prev, [f.id]: "Resolved" }));
+    setSelected(null);
+    toast.success(`ATR filed for ${f.id}`, { description: `Finding marked as Resolved. Record retained in audit trail.` });
+  };
+
+  const handleComplianceReport = () => {
+    const checkRows = checklist.map(c =>
+      `<tr><td>${c.ref}</td><td>${c.item}</td><td style="color:${c.status==="ok"?"#27ae60":"#e67e22"}">${c.status==="ok"?"Compliant":"Needs Attention"}</td></tr>`
+    ).join("");
+    const findingRows = displayFindings.map(f =>
+      `<tr><td style="font-family:monospace;font-size:9pt">${f.id}</td><td style="font-family:monospace;font-size:9pt">${f.tenderId}</td><td>${f.category}</td><td style="color:${f.severity==="high"?"#c0392b":f.severity==="medium"?"#e67e22":"#2980b9"}">${f.severity}</td><td>${f.status}</td><td style="font-size:9pt">${f.observation}</td></tr>`
+    ).join("");
+    const blackRows = vendors.filter(v=>v.blacklisted).map(v=>
+      `<tr><td style="font-family:monospace;font-size:9pt">${v.id}</td><td>${v.companyName}</td><td style="font-family:monospace;font-size:9pt">${v.pan}</td><td>${v.category}</td><td style="color:#c0392b">Debarred</td></tr>`
+    ).join("") || `<tr><td colspan="5" style="text-align:center;color:#888">No active blacklisting on record.</td></tr>`;
+
+    const bodyHtml = `
+      <div class="doc-title">Compliance & Vigilance Report</div>
+      <div class="kv"><span class="k">Overall Compliance Score:</span>${compliancePct}%</div>
+      <div class="kv"><span class="k">Checkpoints Passed:</span>${okCount} of ${checklist.length}</div>
+      <div class="kv"><span class="k">Open Findings:</span>${displayFindings.filter(f=>f.status!=="Resolved").length}</div>
+      <div class="kv"><span class="k">High Severity:</span>${displayFindings.filter(f=>f.severity==="high").length}</div>
+      <div class="kv"><span class="k">Audit Events (24h):</span>${auditLog.length}</div>
+      <div class="section-head">Pre-Award Compliance Checklist (CVC + GFR)</div>
+      <table><thead><tr><th>Ref.</th><th>Checkpoint</th><th>Status</th></tr></thead><tbody>${checkRows}</tbody></table>
+      <div class="section-head">Vigilance Findings & Risk Register</div>
+      <table><thead><tr><th>Ref ID</th><th>Tender</th><th>Category</th><th>Severity</th><th>Status</th><th>Observation</th></tr></thead><tbody>${findingRows}</tbody></table>
+      <div class="section-head">Vendor Blacklist Register</div>
+      <table><thead><tr><th>Vendor ID</th><th>Company</th><th>PAN</th><th>Category</th><th>Status</th></tr></thead><tbody>${blackRows}</tbody></table>
+      <div class="stamp"><p>Compliance & CVC Cell — AP e-Procurement Portal v4.2.1</p><p style="margin-top:40px;border-top:1px solid #bbb;padding-top:8px">Chief Vigilance Officer / Authorised Signatory</p><p>Date: _______________________</p></div>
+    `;
+    printAsPdf("Compliance & Vigilance Report", bodyHtml);
+    toast.success("Print dialog opened — choose 'Save as PDF'");
+  };
+
+  const handlePolicyDownload = (p: typeof policies[number]) => {
+    const bodyHtml = `
+      <div class="doc-title">${p.title}</div>
+      <div class="kv"><span class="k">Document Size:</span>${p.size}</div>
+      <div class="kv"><span class="k">Description:</span>${p.desc}</div>
+      <div class="section-head">About This Document</div>
+      <p style="font-size:10pt;margin:6px 0">This document is part of the AP e-Procurement Policy Library. Officers are required to familiarise themselves with the provisions of this document relevant to their procurement role.</p>
+      <p style="font-size:10pt;margin:6px 0">Access the full document via the official Government of India / Government of Andhra Pradesh publication portal. A copy is maintained in the Policy Library of the AP e-Procurement Portal for reference.</p>
+      <div class="section-head">Key Reference Points</div>
+      <div class="kv"><span class="k">Applicability:</span>All Government of Andhra Pradesh procuring entities</div>
+      <div class="kv"><span class="k">Compliance:</span>Mandatory for tenders processed on the AP e-Procurement Portal</div>
+      <div class="kv"><span class="k">Nodal Authority:</span>Finance Department, Government of Andhra Pradesh</div>
+      <div class="kv"><span class="k">Helpdesk:</span>helpdesk@apeprocurement.gov.in · 1800-3070-2232</div>
+      <div class="stamp"><p>AP e-Procurement Policy Library · Compliance & CVC Cell</p></div>
+    `;
+    printAsPdf(p.title, bodyHtml);
+    toast.success("Print dialog opened — choose 'Save as PDF'");
+  };
 
   const auditLog: AuditEntry[] = useMemo(() => [
     { id: "AUD-9821", timestamp: "2026-04-23 09:42:11", actor: "Sri. R. Venkatesh, IAS", action: "VIEWED_TENDER", entity: tenders[0]?.id ?? "TND-2025-041", ip: "10.42.18.221", outcome: "success" },
@@ -100,7 +163,7 @@ export default function Compliance() {
       title={T("compliance_title")}
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("nav_compliance") }]}
       actions={
-        <Button size="sm" className="h-8 gap-1.5 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90">
+        <Button size="sm" className="h-8 gap-1.5 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90" onClick={handleComplianceReport}>
           <Download className="h-3.5 w-3.5" /> Compliance Report
         </Button>
       }
@@ -171,7 +234,7 @@ export default function Compliance() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filtered.map((f) => (
-                    <tr key={f.id} className="hover:bg-secondary/40">
+                    <tr key={f.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelected(f)}>
                       <td className="px-3 py-2 font-mono text-[11px] text-info">{f.id}</td>
                       <td className="px-3 py-2 font-mono text-[11px]">{f.tenderId}</td>
                       <td className="px-3 py-2 font-medium">{f.category}</td>
@@ -245,7 +308,7 @@ export default function Compliance() {
                 </thead>
                 <tbody className="divide-y divide-border font-mono text-[11px]">
                   {auditLog.map((a) => (
-                    <tr key={a.id} className="hover:bg-secondary/40">
+                    <tr key={a.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelectedAudit(a)}>
                       <td className="px-3 py-2 text-info">{a.id}</td>
                       <td className="px-3 py-2">{a.timestamp}</td>
                       <td className="px-3 py-2">{a.actor}</td>
@@ -275,7 +338,7 @@ export default function Compliance() {
                 <p className="mt-1 text-xs text-muted-foreground">{p.desc}</p>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">PDF · {p.size}</span>
-                  <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]">
+                  <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => handlePolicyDownload(p)}>
                     <Download className="h-3 w-3" /> Download
                   </Button>
                 </div>
@@ -304,7 +367,7 @@ export default function Compliance() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {vendors.filter((v) => v.blacklisted).map((v) => (
-                    <tr key={v.id} className="hover:bg-secondary/40">
+                    <tr key={v.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelectedVendorId(v.id)}>
                       <td className="px-3 py-2 font-mono text-[11px] text-info">{v.id}</td>
                       <td className="px-3 py-2 font-medium">{v.companyName}</td>
                       <td className="px-3 py-2 font-mono text-[11px]">{v.pan}</td>
@@ -322,6 +385,94 @@ export default function Compliance() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Audit entry detail */}
+      <Dialog open={!!selectedAudit} onOpenChange={(o) => !o && setSelectedAudit(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <Lock className="h-4 w-4" /> Audit Event · {selectedAudit?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAudit && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {[
+                  ["Event ID", selectedAudit.id],
+                  ["Timestamp (IST)", selectedAudit.timestamp],
+                  ["Actor", selectedAudit.actor],
+                  ["Action", selectedAudit.action],
+                  ["Entity", selectedAudit.entity],
+                  ["IP Address", selectedAudit.ip],
+                ].map(([label, val]) => (
+                  <div key={label} className="rounded-sm border border-border bg-card p-2.5">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className="mt-0.5 font-mono font-semibold text-foreground">{val}</p>
+                  </div>
+                ))}
+              </div>
+              <div className={`flex items-center gap-2 rounded-sm border p-3 text-sm font-semibold ${selectedAudit.outcome === "flagged" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-success/30 bg-success/5 text-success"}`}>
+                {selectedAudit.outcome === "flagged"
+                  ? <><AlertOctagon className="h-4 w-4" /> Outcome: Flagged for review</>
+                  : <><CheckCircle2 className="h-4 w-4" /> Outcome: Successful</>}
+              </div>
+              <p className="text-[11px] text-muted-foreground italic">This record is part of the immutable DSC-signed audit trail. It cannot be edited or deleted.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Blacklisted vendor detail */}
+      <Dialog open={!!selectedVendorId} onOpenChange={(o) => !o && setSelectedVendorId(null)}>
+        <DialogContent className="max-w-lg">
+          {selectedVendorId && (() => {
+            const v = vendors.find((x) => x.id === selectedVendorId);
+            if (!v) return null;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <AlertOctagon className="h-4 w-4" /> Debarred Vendor · {v.id}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 text-xs">
+                  <div className="rounded-sm border border-destructive/30 bg-destructive/5 p-3">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-destructive" />
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{v.companyName}</p>
+                        <p className="text-muted-foreground">{v.contactPerson} · {v.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["Vendor ID", v.id],
+                      ["Category", v.category],
+                      ["GST No.", v.gst || "—"],
+                      ["PAN No.", v.pan || "—"],
+                      ["Past Performance", `${v.pastPerformance}/100`],
+                      ["Tenders Completed", String(v.completedTenders)],
+                    ].map(([label, val]) => (
+                      <div key={label} className="rounded-sm border border-border bg-card p-2.5">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <p className="mt-0.5 font-mono font-semibold text-foreground">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
+                  <div className="rounded-sm border border-destructive/20 bg-secondary/40 p-3">
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-destructive">Debarment Record</p>
+                    <p className="text-xs"><span className="font-semibold">Status:</span> Debarred · 3 years</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Reason: Substandard supply, EMD forfeiture upheld by RB Department.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">This vendor is barred from participation in any AP Government procurement. All bids from this entity must be summarily rejected.</p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Finding detail */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
@@ -351,7 +502,7 @@ export default function Compliance() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" size="sm" className="h-8 rounded-sm text-xs" onClick={() => setSelected(null)}>Close</Button>
-                <Button size="sm" className="h-8 gap-1 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90">
+                <Button size="sm" className="h-8 gap-1 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90" onClick={() => handleFileATR(selected)}>
                   <FileText className="h-3 w-3" /> File ATR
                 </Button>
               </div>
