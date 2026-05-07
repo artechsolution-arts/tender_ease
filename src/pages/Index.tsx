@@ -41,7 +41,7 @@ const Index = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[240px_1fr]">
         <aside className="space-y-4">
           <div className="overflow-hidden rounded-sm border border-border bg-card shadow-sm">
-            <div className="bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_quick_search")}</div>
+            <div className="bg-primary px-3 py-2 text-sm font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_quick_search")}</div>
             <div className="space-y-2 p-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -58,8 +58,8 @@ const Index = () => {
           </div>
 
           <div className="overflow-hidden rounded-sm border border-border bg-card shadow-sm">
-            <div className="bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_categories")}</div>
-            <ul className="divide-y divide-border text-xs">
+            <div className="bg-primary px-3 py-2 text-sm font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_categories")}</div>
+            <ul className="divide-y divide-border text-sm">
               {([
                 ["Works (Civil)",   "Civil Works"],
                 ["Goods / Supplies","Goods / Supplies"],
@@ -82,8 +82,8 @@ const Index = () => {
           </div>
 
           <div className="overflow-hidden rounded-sm border border-border bg-card shadow-sm">
-            <div className="bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_downloads")}</div>
-            <ul className="space-y-1 p-3 text-xs">
+            <div className="bg-primary px-3 py-2 text-sm font-semibold uppercase tracking-wide text-primary-foreground">{T("dashboard_downloads")}</div>
+            <ul className="space-y-1 p-3 text-sm">
               {[
                 { label: "NIT Template (Form-I)", file: "/downloads/NIT_Template_Form_I.txt" },
                 { label: "Bid Evaluation Sheet", file: "/downloads/Bid_Evaluation_Sheet.csv" },
@@ -100,8 +100,8 @@ const Index = () => {
           </div>
 
           <div className="overflow-hidden rounded-sm border-2 border-accent/60 bg-accent/5 shadow-sm">
-            <div className="bg-accent px-3 py-2 text-xs font-semibold uppercase tracking-wide text-accent-foreground">{T("dashboard_help_desk")}</div>
-            <div className="space-y-1.5 p-3 text-xs">
+            <div className="bg-accent px-3 py-2 text-sm font-semibold uppercase tracking-wide text-accent-foreground">{T("dashboard_help_desk")}</div>
+            <div className="space-y-1.5 p-3 text-sm">
               <p className="flex items-center gap-1.5"><Phone className="h-3 w-3 text-accent" /> 1800-3070-2232</p>
               <p className="flex items-center gap-1.5"><Mail className="h-3 w-3 text-accent" /> helpdesk@ap.gov.in</p>
               <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-accent" /> {T("mon_sat")}</p>
@@ -112,14 +112,14 @@ const Index = () => {
         <div className="space-y-5">
           <section aria-labelledby="kpis" className="rounded-sm border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b-2 border-accent bg-secondary/60 px-4 py-2">
-              <h2 id="kpis" className="text-xs font-bold uppercase tracking-wide text-primary">{T("dashboard_kpi_title")}</h2>
-              <span className="text-[10px] text-muted-foreground">{T("dashboard_kpi_updated")} 23-Apr-2026 09:42 IST</span>
+              <h2 id="kpis" className="text-sm font-bold uppercase tracking-wide text-primary">{T("dashboard_kpi_title")}</h2>
+              <span className="text-xs text-muted-foreground">{T("dashboard_kpi_updated")} 23-Apr-2026 09:42 IST</span>
             </div>
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
-              <KpiCard label={T("dashboard_kpi_live")} value="248" delta={8} helper={T("vs_last_month")} icon={FileText} tone="primary" />
-              <KpiCard label={T("dashboard_kpi_value")} value="₹ 1,247 Cr" delta={12} helper={T("emd_secured")} icon={Wallet} tone="accent" />
-              <KpiCard label={T("dashboard_kpi_bidders")} value="9.4" delta={-3} helper={T("vs_last_quarter")} icon={Users} tone="warning" />
-              <KpiCard label={T("dashboard_kpi_loa")} value="73%" delta={5} helper={T("last_90_days")} icon={TrendingUp} tone="success" />
+              <KpiCard label={T("dashboard_kpi_live")} value="248" delta={8} helper={T("vs_last_month")} icon={FileText} tone="primary" onClick={() => navigate("/tenders")} />
+              <KpiCard label={T("dashboard_kpi_value")} value="₹ 1,247 Cr" delta={12} helper={T("emd_secured")} icon={Wallet} tone="accent" onClick={() => navigate("/reports")} />
+              <KpiCard label={T("dashboard_kpi_bidders")} value="9.4" delta={-3} helper={T("vs_last_quarter")} icon={Users} tone="warning" onClick={() => navigate("/bid-evaluation")} />
+              <KpiCard label={T("dashboard_kpi_loa")} value="73%" delta={5} helper={T("last_90_days")} icon={TrendingUp} tone="success" onClick={() => navigate("/awards")} />
             </div>
           </section>
 

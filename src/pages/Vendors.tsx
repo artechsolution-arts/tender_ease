@@ -66,7 +66,7 @@ function VendorUploadedDocs({ vendorId }: { vendorId: string }) {
 
   return (
     <div>
-      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
         <Brain className="h-3 w-3 text-primary" /> Uploaded Documents
         <span className="font-normal">({docs.length})</span>
       </p>
@@ -83,7 +83,7 @@ function VendorUploadedDocs({ vendorId }: { vendorId: string }) {
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
                   <div className="min-w-0">
                     <p className="max-w-[200px] truncate text-sm font-semibold leading-snug text-foreground">{doc.originalName}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {DOC_TYPE_LABELS[doc.docType] || doc.docType} · {(doc.fileSize / 1024).toFixed(0)} KB
                     </p>
                   </div>
@@ -103,7 +103,7 @@ function VendorUploadedDocs({ vendorId }: { vendorId: string }) {
                   </span>
                 </div>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
+              <p className="mt-1.5 text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground/70">Uploaded</span>{" "}
                 {new Date(doc.createdAt).toLocaleDateString("en-IN")}
                 {doc.uploader && (
@@ -120,7 +120,7 @@ function VendorUploadedDocs({ vendorId }: { vendorId: string }) {
 
 // ── OCR Documents tab (real API data) ─────────────────────────────────────────
 function VendorOCRDocsTab({ vendorId }: { vendorId: string }) {
-  const { data, isLoading, refetch } = useDocuments({ vendorId });
+  const { data, isLoading, isFetching, refetch } = useDocuments({ vendorId });
   const [selectedDoc, setSelectedDoc] = useState<ApiVendorDoc | null>(null);
   const docs: ApiVendorDoc[] = data?.docs ?? [];
 
@@ -137,8 +137,8 @@ function VendorOCRDocsTab({ vendorId }: { vendorId: string }) {
           <span className="text-xs font-bold uppercase tracking-wide text-primary">AI OCR Documents</span>
           {!isLoading && <span className="text-xs text-muted-foreground">({docs.length} uploaded)</span>}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
-          <RefreshCw className="h-3.5 w-3.5" />
+        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isFetching} onClick={() => refetch()}>
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
@@ -195,7 +195,7 @@ function VendorOCRDocsTab({ vendorId }: { vendorId: string }) {
                         {v?.aiFlagged && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
                         <p className="font-medium text-foreground max-w-[140px] truncate">{doc.originalName}</p>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{(doc.fileSize / 1024).toFixed(0)} KB</p>
+                      <p className="text-xs text-muted-foreground">{(doc.fileSize / 1024).toFixed(0)} KB</p>
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">
                       {DOC_TYPE_LABELS[doc.docType] || doc.docType}
@@ -373,7 +373,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-base">{vendor.companyName}</DialogTitle>
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">{vendor.id}</span>
+                <span className="text-xs text-muted-foreground">{vendor.id}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-xs text-muted-foreground">{vendor.category}</span>
               </div>
@@ -427,7 +427,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                 <div key={label} className="flex items-start gap-2.5 rounded-sm border border-border/60 bg-secondary/20 px-3 py-2.5">
                   <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                     <p className="mt-0.5 truncate text-sm font-medium text-foreground">{value}</p>
                   </div>
                 </div>
@@ -438,26 +438,26 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
               <div className="flex items-start gap-2.5 rounded-sm border border-border/60 bg-secondary/20 px-3 py-2.5">
                 <FileCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">GST Number</p>
-                  <p className="mt-0.5 font-mono text-sm font-medium text-foreground">{vendor.gst || "—"}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">GST Number</p>
+                  <p className="mt-0.5 text-sm font-medium text-foreground">{vendor.gst || "—"}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-sm border border-border/60 bg-secondary/20 px-3 py-2.5">
                 <FileCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">PAN Number</p>
-                  <p className="mt-0.5 font-mono text-sm font-medium text-foreground">{vendor.pan || "—"}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">PAN Number</p>
+                  <p className="mt-0.5 text-sm font-medium text-foreground">{vendor.pan || "—"}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-sm border border-border/60 bg-secondary/20 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Performance Score</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Performance Score</p>
               <div className="mt-2 flex items-center gap-3">
                 <Progress value={vendor.pastPerformance} className="h-2 flex-1" />
                 <span className="text-sm font-bold text-primary">{vendor.pastPerformance}/100</span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{vendor.completedTenders} tender{vendor.completedTenders !== 1 ? "s" : ""} completed</p>
+              <p className="mt-1 text-sm text-muted-foreground">{vendor.completedTenders} tender{vendor.completedTenders !== 1 ? "s" : ""} completed</p>
             </div>
           </TabsContent>
 
@@ -475,7 +475,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">{p.name}</p>
-                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{p.tenderRef}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{p.tenderRef}</p>
                       </div>
                       <StarRating rating={p.rating} />
                     </div>
@@ -501,7 +501,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                 { label: "Pending / Rejected",value: docs.filter((d) => (docStatuses[d.id] ?? d.status) !== "Verified").length,      cls: "text-warning" },
               ].map(({ label, value, cls }) => (
                 <div key={label} className="rounded-sm border border-border/60 bg-secondary/20 px-3 py-2 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                   <p className={`text-xl font-bold ${cls}`}>{value}</p>
                 </div>
               ))}
@@ -519,13 +519,13 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
 
             {/* Pre-registered documents (static / seeded) */}
             {groups.length > 0 && (
-              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 <FileCheck className="h-3 w-3 text-primary" /> Pre-Registered Documents
               </p>
             )}
             {groups.map((group) => (
               <div key={group}>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group}</p>
+                <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">{group}</p>
                 <div className="space-y-2">
                   {docs.filter((d) => d.group === group).map((doc) => {
                     const effectiveStatus = docStatuses[doc.id] ?? doc.status;
@@ -537,7 +537,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                           <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold leading-snug text-foreground">{doc.name}</p>
-                            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{doc.docNo}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{doc.docNo}</p>
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -611,38 +611,38 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
                     </p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Order No.</p>
-                        <p className="font-mono font-medium">{detail.blacklistEntry.orderNo}</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Order No.</p>
+                        <p className="font-medium">{detail.blacklistEntry.orderNo}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Date of Order</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Date of Order</p>
                         <p className="font-medium">{detail.blacklistEntry.date}</p>
                       </div>
                       <div className="col-span-2">
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Issuing Authority</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Issuing Authority</p>
                         <p className="font-medium">{detail.blacklistEntry.authority}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Duration</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Duration</p>
                         <p className={`font-semibold ${detail.blacklistEntry.duration === "Permanent" ? "text-destructive" : "text-warning"}`}>
                           {detail.blacklistEntry.duration}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Reason</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Reason</p>
                         <p className="font-medium text-destructive">{detail.blacklistEntry.reason}</p>
                       </div>
                       {detail.blacklistEntry.relatedTender && (
                         <div className="col-span-2">
-                          <p className="text-[10px] font-semibold uppercase text-muted-foreground">Related Tender</p>
-                          <p className="font-mono font-medium">{detail.blacklistEntry.relatedTender}</p>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">Related Tender</p>
+                          <p className="font-medium">{detail.blacklistEntry.relatedTender}</p>
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div className="rounded-sm border border-border/60 bg-secondary/10 p-3">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Detailed Description</p>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detailed Description</p>
                     <p className="text-sm leading-relaxed text-foreground/80">{detail.blacklistEntry.description}</p>
                   </div>
 
@@ -663,7 +663,7 @@ function VendorDetailDialog({ vendor, open, onClose }: { vendor: Vendor | null; 
 }
 
 export default function Vendors() {
-  const { vendors, pendingVendors, approveVendor, rejectVendor, tenders } = useAdmin();
+  const { vendors, pendingVendors, approveVendor, rejectVendor, tenders, refreshVendors } = useAdmin();
   const T = useT();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"approved" | "pending">("approved");
@@ -697,36 +697,41 @@ export default function Vendors() {
     <AdminLayout
       title={T("vendors_title")}
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("common_officer_console"), to: "/" }, { label: T("nav_vendors") }]}
+      actions={
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-sm" onClick={refreshVendors}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+      }
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <Card
           onClick={() => { setStatusFilter("all"); setTab("approved"); }}
           className={`cursor-pointer rounded-sm border-l-4 border-l-primary p-3 transition-colors hover:bg-primary/5 ${statusFilter === "all" ? "ring-2 ring-primary/30 bg-primary/5" : ""}`}
         >
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vendors_total")}</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("vendors_total")}</p>
           <p className="text-2xl font-bold text-primary">{vendors.length}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Click to show all</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Click to show all</p>
         </Card>
         <Card
           onClick={() => toggleStatFilter("active")}
           className={`cursor-pointer rounded-sm border-l-4 border-l-success p-3 transition-colors hover:bg-success/5 ${statusFilter === "active" ? "ring-2 ring-success/30 bg-success/5" : ""}`}
         >
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vendors_active")}</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("vendors_active")}</p>
           <p className="text-2xl font-bold text-success">{vendors.filter((v) => !v.blacklisted).length}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusFilter === "active" ? "✓ Filtered" : "Click to filter"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{statusFilter === "active" ? "✓ Filtered" : "Click to filter"}</p>
         </Card>
         <Card
           onClick={() => toggleStatFilter("blacklisted")}
           className={`cursor-pointer rounded-sm border-l-4 border-l-destructive p-3 transition-colors hover:bg-destructive/5 ${statusFilter === "blacklisted" ? "ring-2 ring-destructive/30 bg-destructive/5" : ""}`}
         >
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vendors_blacklisted")}</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("vendors_blacklisted")}</p>
           <p className="text-2xl font-bold text-destructive">{vendors.filter((v) => v.blacklisted).length}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusFilter === "blacklisted" ? "✓ Filtered" : "Click to filter"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{statusFilter === "blacklisted" ? "✓ Filtered" : "Click to filter"}</p>
         </Card>
         <Card className="rounded-sm border-l-4 border-l-accent p-3">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("vendors_avg_performance")}</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("vendors_avg_performance")}</p>
           <p className="text-2xl font-bold text-accent">{vendors.length ? Math.round(vendors.reduce((s, v) => s + v.pastPerformance, 0) / vendors.length) : 0}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Avg. across all vendors</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Avg. across all vendors</p>
         </Card>
       </div>
 
@@ -777,25 +782,25 @@ export default function Vendors() {
             <TableBody>
               {rows.map((v) => (
                 <TableRow key={v.id} className="cursor-pointer border-border/60 transition-colors hover:bg-accent/5" onClick={() => setSelectedVendor(v)}>
-                  <TableCell className="pl-4 font-mono text-xs">{v.id}</TableCell>
+                  <TableCell className="pl-4 text-xs">{v.id}</TableCell>
                   <TableCell>
                     <p className="flex items-center gap-1.5 font-medium text-foreground"><Building2 className="h-3 w-3 text-primary" /> {v.companyName}</p>
-                    <p className="text-[11px] text-muted-foreground">{v.contactPerson}</p>
-                    <p className="flex items-center gap-2 text-[11px] text-muted-foreground"><Mail className="h-3 w-3" /> {v.email}</p>
-                    <p className="flex items-center gap-2 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" /> {v.phone}</p>
+                    <p className="text-xs text-muted-foreground">{v.contactPerson}</p>
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="h-3 w-3" /> {v.email}</p>
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="h-3 w-3" /> {v.phone}</p>
                   </TableCell>
                   <TableCell className="text-xs">{v.category}</TableCell>
                   <TableCell className="text-xs">
-                    <p className="font-mono">GST: {v.gst}</p>
-                    <p className="font-mono">PAN: {v.pan}</p>
-                    <p className="text-[10px] text-muted-foreground">{T("vendors_reg")} {fmtDate(v.registeredOn)}</p>
+                    <p>GST: {v.gst}</p>
+                    <p>PAN: {v.pan}</p>
+                    <p className="text-xs text-muted-foreground">{T("vendors_reg")} {fmtDate(v.registeredOn)}</p>
                   </TableCell>
                   <TableCell className="min-w-[140px]">
                     <div className="flex items-center gap-2">
                       <Progress value={v.pastPerformance} className="h-1.5" />
                       <span className="text-xs font-bold text-primary">{v.pastPerformance}</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">{v.completedTenders} {T("vendors_completed")}</p>
+                    <p className="text-xs text-muted-foreground">{v.completedTenders} {T("vendors_completed")}</p>
                   </TableCell>
                   <TableCell className="text-xs text-center">{tendersFor(v.id)}</TableCell>
                   <TableCell className="pr-4">
@@ -838,11 +843,11 @@ export default function Vendors() {
                 ) : (
                   pendingVendors.map((pr) => (
                     <TableRow key={pr.id} className="border-border/60">
-                      <TableCell className="pl-4 font-mono text-xs">{pr.id}</TableCell>
+                      <TableCell className="pl-4 text-xs">{pr.id}</TableCell>
                       <TableCell>
                          <p className="font-bold text-foreground flex items-center gap-1"><Building2 className="h-3 w-3 text-primary" /> {pr.company}</p>
-                        <p className="text-[11px] text-muted-foreground">{pr.contact}</p>
-                        <p className="text-[11px] text-muted-foreground">{pr.email} | {pr.phone}</p>
+                        <p className="text-xs text-muted-foreground">{pr.contact}</p>
+                        <p className="text-xs text-muted-foreground">{pr.email} | {pr.phone}</p>
                       </TableCell>
                       <TableCell className="text-xs">{pr.submittedOn}</TableCell>
                       <TableCell><span className="inline-flex items-center rounded-sm bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning ring-1 ring-inset ring-warning/30">{pr.status}</span></TableCell>
@@ -890,7 +895,7 @@ export default function Vendors() {
                 <span className="text-3xl font-black text-primary">94</span>
                 <span className="text-sm text-muted-foreground pb-1">/ 100</span>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 italic">
+              <p className="text-xs text-muted-foreground mt-2 italic">
                 "Profile exhibits high consistency across all government databases and financial filings."
               </p>
             </div>
@@ -907,7 +912,7 @@ export default function Vendors() {
                     <p className="text-sm font-bold text-foreground">{T("vendors_identity_kyc")}</p>
                     <span className="text-xs font-bold text-success">MATCHED</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">PAN/GSTIN records match the registered company name at 99.8% confidence.</p>
+                  <p className="text-xs text-muted-foreground">PAN/GSTIN records match the registered company name at 99.8% confidence.</p>
                 </div>
               </div>
 
@@ -920,7 +925,7 @@ export default function Vendors() {
                     <p className="text-sm font-bold text-foreground">{T("vendors_financial_health")}</p>
                     <span className="text-xs font-bold text-warning">CAUTION</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Net profit margin dipped by 4% in Q4 2025. Still well above eligibility thresholds.</p>
+                  <p className="text-xs text-muted-foreground">Net profit margin dipped by 4% in Q4 2025. Still well above eligibility thresholds.</p>
                 </div>
               </div>
 
@@ -933,7 +938,7 @@ export default function Vendors() {
                     <p className="text-sm font-bold text-foreground">{T("vendors_project_capability")}</p>
                     <span className="text-xs font-bold text-success">OPTIMAL</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Vendor has successfully executed 5+ projects of similar scale in the last 24 months.</p>
+                  <p className="text-xs text-muted-foreground">Vendor has successfully executed 5+ projects of similar scale in the last 24 months.</p>
                 </div>
               </div>
 
@@ -946,7 +951,7 @@ export default function Vendors() {
                     <p className="text-sm font-bold text-foreground">{T("vendors_compliance_check")}</p>
                     <span className="text-xs font-bold text-success">PASSED</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">No records found in national debarment or blacklisting registries.</p>
+                  <p className="text-xs text-muted-foreground">No records found in national debarment or blacklisting registries.</p>
                 </div>
               </div>
             </div>
@@ -959,7 +964,7 @@ export default function Vendors() {
               <p className="text-sm font-medium text-foreground">
                 Recommend for **IMMEDIATE APPROVAL**.
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The minor financial dip is seasonal. Overall compliance and technical scores are in the top 5th percentile for new registrants.
               </p>
               <div className="mt-4 flex gap-2">

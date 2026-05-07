@@ -14,14 +14,17 @@ import {
 import { TenderStatusBadge } from "@/components/admin/TenderStatusBadge";
 import { TenderFormDialog } from "@/components/admin/TenderFormDialog";
 import { useAdmin, fmtINR, fmtDate, fmtDateTime, nextStatuses, TENDER_STATUSES, type Tender, type TenderStatus } from "@/store/admin-store";
-import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award, Tag, X, Download } from "lucide-react";
+import { Plus, Search, Pencil, Eye, History, ArrowRight, Trash2, FileText, ShieldCheck, Award, Tag, X, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/useT";
+import { useAuth } from "@/store/auth-store";
 
 const CATEGORIES = ["All", "Civil Works", "Goods / Supplies", "Services", "IT / e-Gov", "Consultancy", "Healthcare", "Auction / Sale"];
 
 export default function Tenders() {
-  const { tenders, vendors, changeStatus, deleteTender } = useAdmin();
+  const { tenders, vendors, changeStatus, deleteTender, refreshTenders } = useAdmin();
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const T = useT();
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
@@ -36,8 +39,12 @@ export default function Tenders() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const exactIdMatch = q ? tenders.find((t) => t.id.toLowerCase() === q) : null;
-    return tenders.filter((t) => {
+    const vendorId = currentUser?.vendorId;
+    const eligible = isAdmin
+      ? tenders
+      : tenders.filter((t) => vendorId && t.eligibleVendorIds.includes(vendorId) && t.status === "Published");
+    const exactIdMatch = q ? eligible.find((t) => t.id.toLowerCase() === q) : null;
+    return eligible.filter((t) => {
       const matchQ = !q
         || (exactIdMatch ? t.id.toLowerCase() === q : (
           t.id.toLowerCase().includes(q)
@@ -48,7 +55,7 @@ export default function Tenders() {
       const matchC = categoryFilter === "All" || t.category === categoryFilter;
       return matchQ && matchS && matchC;
     });
-  }, [tenders, query, statusFilter, categoryFilter]);
+  }, [tenders, query, statusFilter, categoryFilter, isAdmin, currentUser]);
 
   const handleAdvance = (t: Tender) => {
     const nxt = nextStatuses(t.status);
@@ -71,18 +78,23 @@ export default function Tenders() {
     <AdminLayout
       title={T("tenders_title")}
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("common_officer_console"), to: "/" }, { label: T("nav_tenders") }]}
-      actions={
-        <Button size="sm" className="h-8 gap-1.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-3.5 w-3.5" /> {T("tenders_create")}
-        </Button>
-      }
+      actions={isAdmin ? (
+        <>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-sm" onClick={refreshTenders}>
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+          <Button size="sm" className="h-8 gap-1.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5" /> {T("tenders_create")}
+          </Button>
+        </>
+      ) : undefined}
     >
       <Card className="rounded-sm border-border">
         <div className="flex flex-col gap-3 border-b border-border bg-secondary/40 p-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-bold uppercase tracking-wide text-primary">{T("tenders_all")}</h3>
-            <span className="text-xs text-muted-foreground">({rows.length} {T("common_of")} {tenders.length})</span>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-primary">{isAdmin ? T("tenders_all") : "Open for Bidding"}</h3>
+            <span className="text-sm text-muted-foreground">({rows.length} {T("common_of")} {isAdmin ? tenders.length : rows.length})</span>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative">
@@ -107,8 +119,8 @@ export default function Tenders() {
         {categoryFilter !== "All" && (
           <div className="flex items-center gap-2 border-b border-border bg-accent/5 px-3 py-2">
             <Tag className="h-3.5 w-3.5 text-accent" />
-            <span className="text-xs font-medium text-accent">Filtered by category: <strong>{categoryFilter}</strong></span>
-            <button onClick={() => setCategoryFilter("All")} className="ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-secondary hover:text-foreground">
+            <span className="text-sm font-medium text-accent">Filtered by category: <strong>{categoryFilter}</strong></span>
+            <button onClick={() => setCategoryFilter("All")} className="ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
               <X className="h-3 w-3" /> Clear filter
             </button>
           </div>
@@ -118,7 +130,7 @@ export default function Tenders() {
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/30 hover:bg-secondary/30">
-                <TableHead className="pl-4">{T("tenders_col_id")}</TableHead>
+                <TableHead className="pl-4 whitespace-nowrap">{T("tenders_col_id")}</TableHead>
                 <TableHead>{T("tenders_col_name")}</TableHead>
                 <TableHead>{T("tenders_col_dept")}</TableHead>
                 <TableHead>{T("tenders_col_value")}</TableHead>
@@ -131,25 +143,25 @@ export default function Tenders() {
             <TableBody>
               {rows.map((t) => (
                 <TableRow key={t.id} className="border-border/60 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setViewing(t)}>
-                  <TableCell className="pl-4 font-mono text-xs">{t.id}</TableCell>
+                  <TableCell className="pl-4 text-sm whitespace-nowrap">{t.id}</TableCell>
                   <TableCell className="max-w-[260px]">
                     <p className="font-medium text-foreground line-clamp-1">{t.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{t.category} · v{t.history.length + 1}</p>
+                    <p className="text-xs text-muted-foreground">{t.category} · v{t.history.length + 1}</p>
                   </TableCell>
-                  <TableCell className="text-xs">{t.department}</TableCell>
-                  <TableCell className="text-xs tabular-nums">{fmtINR(t.estimatedValue)}</TableCell>
-                  <TableCell className="text-xs">{fmtDate(t.endDate)}</TableCell>
-                  <TableCell className="text-xs text-center">{t.eligibleVendorIds.length}</TableCell>
+                  <TableCell className="text-sm">{t.department}</TableCell>
+                  <TableCell className="text-sm tabular-nums">{fmtINR(t.estimatedValue)}</TableCell>
+                  <TableCell className="text-sm">{fmtDate(t.endDate)}</TableCell>
+                  <TableCell className="text-sm text-center">{t.eligibleVendorIds.length}</TableCell>
                   <TableCell><TenderStatusBadge status={t.status} /></TableCell>
                   <TableCell className="pr-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_view")} onClick={() => setViewing(t)}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_edit")} onClick={() => setEditing(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_history")} onClick={() => setHistoryFor(t)}><History className="h-3.5 w-3.5" /></Button>
-                      {nextStatuses(t.status).length > 0 && (
+                      {isAdmin && <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_edit")} onClick={() => setEditing(t)}><Pencil className="h-3.5 w-3.5" /></Button>}
+                      {isAdmin && <Button variant="ghost" size="icon" className="h-7 w-7" title={T("tenders_history")} onClick={() => setHistoryFor(t)}><History className="h-3.5 w-3.5" /></Button>}
+                      {isAdmin && nextStatuses(t.status).length > 0 && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-info" title={`→ ${nextStatuses(t.status)[0]}`} onClick={() => handleAdvance(t)}><ArrowRight className="h-3.5 w-3.5" /></Button>
                       )}
-                      {t.status === "Draft" && (
+                      {isAdmin && t.status === "Draft" && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={T("tenders_delete")} onClick={() => { deleteTender(t.id); toast.success("Tender deleted"); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                       )}
                     </div>
@@ -175,12 +187,12 @@ export default function Tenders() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{viewing.id}</span> · {viewing.name}</DialogTitle>
                 <DialogDescription>
-                  <TenderStatusBadge status={viewing.status} /> <span className="ml-2 text-xs">{viewing.department} · {viewing.category}</span>
+                  <TenderStatusBadge status={viewing.status} /> <span className="ml-2 text-sm">{viewing.department} · {viewing.category}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 text-sm">
                 <p className="text-muted-foreground">{viewing.description}</p>
-                <div className="grid grid-cols-2 gap-3 rounded-sm bg-secondary/40 p-3 text-xs">
+                <div className="grid grid-cols-2 gap-3 rounded-sm bg-secondary/40 p-3 text-sm">
                   <div><p className="text-muted-foreground">{T("tenders_dialog_est_value")}</p><p className="font-bold text-primary">{fmtINR(viewing.estimatedValue)}</p></div>
                   <div><p className="text-muted-foreground">{T("tenders_dialog_created")}</p><p>{fmtDate(viewing.createdAt)}</p></div>
                   <div><p className="text-muted-foreground">{T("tenders_dialog_start")}</p><p>{fmtDate(viewing.startDate)}</p></div>
@@ -190,10 +202,10 @@ export default function Tenders() {
                   )}
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-semibold uppercase text-primary">{T("tenders_dialog_docs")}</p>
+                  <p className="mb-1 text-sm font-semibold uppercase text-primary">{T("tenders_dialog_docs")}</p>
                   <ul className="divide-y divide-border rounded-sm border border-border">
                     {viewing.documents.map((d) => (
-                      <li key={d.id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-secondary/30 transition-colors">
+                      <li key={d.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-secondary/30 transition-colors">
                         <span className="flex items-center gap-2 font-medium min-w-0">
                           <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
                           <span className="truncate">{d.name}</span>
@@ -205,12 +217,14 @@ export default function Tenders() {
                           className="h-6 shrink-0 gap-1 rounded-sm px-2 text-[10px]"
                           onClick={() => {
                             const blob = new Blob([`Tender Document: ${d.name}\nTender: ${viewing.name} (${viewing.id})\nDepartment: ${viewing.department}\nFile Size: ${d.size || "—"}\n\nThis document is part of the AP e-Procurement tender notice.\nReference: ${viewing.id}\nIssued by: ${viewing.department}\nDate: ${new Date().toLocaleDateString("en-IN")}`], { type: "text/plain" });
-                            const url = URL.createObjectURL(blob);
+                            const blobUrl = URL.createObjectURL(blob);
                             const a = document.createElement("a");
-                            a.href = url;
-                            a.download = d.name.replace(/\s+/g, "_") + ".txt";
+                            a.href = blobUrl;
+                            a.download = d.name;
+                            document.body.appendChild(a);
                             a.click();
-                            URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
                           }}
                         >
                           <Download className="h-3 w-3" /> Download
@@ -220,8 +234,8 @@ export default function Tenders() {
                   </ul>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-semibold uppercase text-primary">{T("tenders_dialog_eligible_vendors")} ({viewing.eligibleVendorIds.length})</p>
-                  <ul className="space-y-1 text-xs">{viewing.eligibleVendorIds.map((id) => <li key={id} className="rounded-sm bg-secondary/40 px-2 py-1">🏢 {vendorName(id)} <span className="text-muted-foreground">({id})</span></li>)}</ul>
+                  <p className="mb-1 text-sm font-semibold uppercase text-primary">{T("tenders_dialog_eligible_vendors")} ({viewing.eligibleVendorIds.length})</p>
+                  <ul className="space-y-1 text-sm">{viewing.eligibleVendorIds.map((id) => <li key={id} className="rounded-sm bg-secondary/40 px-2 py-1">🏢 {vendorName(id)} <span className="text-muted-foreground">({id})</span></li>)}</ul>
                 </div>
               </div>
             </>
@@ -240,9 +254,9 @@ export default function Tenders() {
               </DialogHeader>
               <div className="space-y-2">
                 <div className="rounded-sm border-l-4 border-accent bg-accent/5 p-3">
-                  <p className="text-xs font-bold text-accent">{T("tenders_history_current")} · v{historyFor.history.length + 1}</p>
+                  <p className="text-sm font-bold text-accent">{T("tenders_history_current")} · v{historyFor.history.length + 1}</p>
                   <p className="text-sm font-medium">{historyFor.name}</p>
-                  <p className="text-xs text-muted-foreground">{T("tenders_history_deadline")}: {fmtDate(historyFor.endDate)} · {T("tenders_col_eligible")}: {historyFor.eligibleVendorIds.length} {T("tenders_history_eligible")} · {T("tenders_col_value")}: {fmtINR(historyFor.estimatedValue)}</p>
+                  <p className="text-sm text-muted-foreground">{T("tenders_history_deadline")}: {fmtDate(historyFor.endDate)} · {T("tenders_col_eligible")}: {historyFor.eligibleVendorIds.length} {T("tenders_history_eligible")} · {T("tenders_col_value")}: {fmtINR(historyFor.estimatedValue)}</p>
                 </div>
                 {historyFor.history.length === 0 && (
                   <p className="rounded-sm border border-dashed border-border p-6 text-center text-xs text-muted-foreground">{T("tenders_history_no_versions")}</p>
@@ -251,10 +265,10 @@ export default function Tenders() {
                   <div key={v.version} className="rounded-sm border border-border bg-card p-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-bold text-primary">v{v.version}</p>
-                      <p className="text-[11px] text-muted-foreground">{fmtDateTime(v.editedAt)} · {v.editedBy}</p>
+                      <p className="text-xs text-muted-foreground">{fmtDateTime(v.editedAt)} · {v.editedBy}</p>
                     </div>
-                    <p className="mt-1 text-xs italic text-muted-foreground">"{v.changes}"</p>
-                    <p className="mt-1 text-xs">{T("tenders_history_deadline")}: <span className="font-mono">{fmtDate(v.snapshot.endDate)}</span> · {T("tenders_col_eligible")}: {v.snapshot.eligibleVendorIds.length} {T("tenders_history_eligible")} · {T("tenders_col_value")}: {fmtINR(v.snapshot.estimatedValue)}</p>
+                    <p className="mt-1 text-sm italic text-muted-foreground">"{v.changes}"</p>
+                    <p className="mt-1 text-sm">{T("tenders_history_deadline")}: <span className="font-mono">{fmtDate(v.snapshot.endDate)}</span> · {T("tenders_col_eligible")}: {v.snapshot.eligibleVendorIds.length} {T("tenders_history_eligible")} · {T("tenders_col_value")}: {fmtINR(v.snapshot.estimatedValue)}</p>
                   </div>
                 ))}
               </div>

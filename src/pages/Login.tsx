@@ -97,6 +97,7 @@ const ACTION_LABELS: Record<string, string> = {
   support:            "Support Desk",
   tenders:            "Tender Listings",
   "blocked-suppliers": "Blocked Suppliers List",
+  "bid-submission":   "Bid Submission",
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -195,6 +196,7 @@ export default function Login() {
   /* Show login popup for restricted features */
   const requireLogin = (action: string) => {
     setLoginModalFor(ACTION_LABELS[action] || action);
+    setError("");
     setShowLoginModal(true);
   };
 
@@ -1026,15 +1028,17 @@ export default function Login() {
               >
                 Close
               </Button>
-              <Button
-                className="flex-1 bg-primary text-sm text-white hover:bg-primary/90"
-                onClick={() => {
-                  setSelectedTender(null);
-                  loginRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-              >
-                Login to Bid
-              </Button>
+              {!selectedTender.id.startsWith("UPC-") && (
+                <Button
+                  className="flex-1 bg-primary text-sm text-white hover:bg-primary/90"
+                  onClick={() => {
+                    setSelectedTender(null);
+                    requireLogin("bid-submission");
+                  }}
+                >
+                  Login to Bid
+                </Button>
+              )}
             </div>
           </div>
         </div>

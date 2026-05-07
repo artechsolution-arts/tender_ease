@@ -9,6 +9,7 @@ interface KpiCardProps {
   helper?: string;
   icon: LucideIcon;
   tone?: "primary" | "accent" | "success" | "warning";
+  onClick?: () => void;
 }
 
 const toneMap = {
@@ -25,10 +26,13 @@ const stripeMap = {
   warning: "bg-warning",
 } as const;
 
-export function KpiCard({ label, value, delta, helper, icon: Icon, tone = "primary" }: KpiCardProps) {
+export function KpiCard({ label, value, delta, helper, icon: Icon, tone = "primary", onClick }: KpiCardProps) {
   const positive = delta >= 0;
   return (
-    <Card className="relative overflow-hidden rounded-sm border border-border bg-card p-0 shadow-sm transition hover:shadow-md">
+    <Card
+      className={`relative overflow-hidden rounded-sm border border-border bg-card p-0 shadow-sm transition hover:shadow-md ${onClick ? "cursor-pointer hover:ring-2 hover:ring-primary/30 active:scale-[0.98]" : ""}`}
+      onClick={onClick}
+    >
       <div className={cn("absolute left-0 top-0 h-full w-1", stripeMap[tone])} aria-hidden="true" />
       <div className="flex items-start justify-between p-4 pl-5">
         <div>

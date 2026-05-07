@@ -225,13 +225,13 @@ export default function AiInsights() {
               <Brain className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Executive Summary · Generated {refreshedAt.toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
               </p>
               <h3 className="mt-0.5 text-base font-bold text-primary">
                 Procurement health is <span className="text-success">strong</span>. {insights.fraudFlags} risk events require attention.
               </h3>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
                 Across <strong>{insights.total}</strong> active tenders worth <strong>{fmtINR(insights.totalValue)}</strong>, ProcureAI estimates
                 <strong className="text-success"> {fmtINR(insights.savingsEstimate)}</strong> in cumulative savings (~7.4% under estimate).
                 Cycle time has improved <strong>14%</strong> QoQ. <strong>3 anomalies</strong> flagged for review — see below.
@@ -274,11 +274,11 @@ export default function AiInsights() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary/30">
-                    <TableHead className="text-[11px] uppercase">Reference</TableHead>
-                    <TableHead className="text-[11px] uppercase">Type</TableHead>
-                    <TableHead className="text-[11px] uppercase">Severity</TableHead>
-                    <TableHead className="text-[11px] uppercase">Finding & Recommendation</TableHead>
-                    <TableHead className="text-[11px] uppercase text-right">Action</TableHead>
+                    <TableHead className="text-xs uppercase">Reference</TableHead>
+                    <TableHead className="text-xs uppercase">Type</TableHead>
+                    <TableHead className="text-xs uppercase">Severity</TableHead>
+                    <TableHead className="text-xs uppercase">Finding & Recommendation</TableHead>
+                    <TableHead className="text-xs uppercase text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -286,19 +286,19 @@ export default function AiInsights() {
                     <TableRow key={a.id}>
                       <TableCell className="align-top">
                         <p className="font-mono text-xs font-semibold text-primary">{a.tenderId}</p>
-                        <p className="text-[11px] text-muted-foreground line-clamp-1">{a.tenderName}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{a.tenderName}</p>
                       </TableCell>
                       <TableCell className="align-top">
-                        <Badge variant="outline" className="text-[11px]">{a.type}</Badge>
+                        <Badge variant="outline" className="text-xs">{a.type}</Badge>
                       </TableCell>
                       <TableCell className="align-top">
-                        <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-semibold ${RISK_TONE[a.severity]}`}>
+                        <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold ${RISK_TONE[a.severity]}`}>
                           {a.severity}
                         </span>
                       </TableCell>
                       <TableCell className="max-w-md align-top">
-                        <p className="text-xs text-foreground">{a.description}</p>
-                        <p className="mt-1 flex items-start gap-1 text-[11px] text-info">
+                        <p className="text-sm text-foreground">{a.description}</p>
+                        <p className="mt-1 flex items-start gap-1 text-xs text-info">
                           <Lightbulb className="mt-0.5 h-3 w-3 flex-shrink-0" /> {a.recommendation}
                         </p>
                       </TableCell>
@@ -371,9 +371,9 @@ export default function AiInsights() {
             {forecasts.map((f) => (
               <Card key={f.label}>
                 <CardContent className="p-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{f.label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{f.label}</p>
                   <p className="mt-1 text-lg font-bold text-primary">{f.value}</p>
-                  <p className={`mt-0.5 flex items-center gap-1 text-[11px] font-semibold ${f.up ? "text-success" : "text-destructive"}`}>
+                  <p className={`mt-0.5 flex items-center gap-1 text-xs font-semibold ${f.up ? "text-success" : "text-destructive"}`}>
                     <TrendingUp className="h-3 w-3" /> {f.trend}
                   </p>
                 </CardContent>
@@ -452,11 +452,11 @@ export default function AiInsights() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/30">
-                      <TableHead className="text-[11px] uppercase">Vendor</TableHead>
-                      <TableHead className="text-[11px] uppercase">Category</TableHead>
-                      <TableHead className="text-[11px] uppercase text-center">Tenders</TableHead>
-                      <TableHead className="text-[11px] uppercase">AI Score</TableHead>
-                      <TableHead className="text-[11px] uppercase">Recommendation</TableHead>
+                      <TableHead className="text-xs uppercase">Vendor</TableHead>
+                      <TableHead className="text-xs uppercase">Category</TableHead>
+                      <TableHead className="text-xs uppercase text-center">Tenders</TableHead>
+                      <TableHead className="text-xs uppercase">AI Score</TableHead>
+                      <TableHead className="text-xs uppercase">Recommendation</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -466,7 +466,7 @@ export default function AiInsights() {
                         <TableRow key={v.id}>
                           <TableCell>
                             <p className="text-xs font-semibold text-foreground">{v.companyName}</p>
-                            <p className="font-mono text-[11px] text-muted-foreground">{v.id}</p>
+                            <p className="font-mono text-xs text-muted-foreground">{v.id}</p>
                           </TableCell>
                           <TableCell className="text-xs">{v.category}</TableCell>
                           <TableCell className="text-center font-mono text-xs">{v.completedTenders}</TableCell>
@@ -477,7 +477,7 @@ export default function AiInsights() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-semibold ${RISK_TONE[reco.tone === "success" ? "Low" : reco.tone === "info" ? "Low" : "Medium"]}`}>
+                            <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold ${RISK_TONE[reco.tone === "success" ? "Low" : reco.tone === "info" ? "Low" : "Medium"]}`}>
                               {reco.t}
                             </span>
                           </TableCell>
@@ -502,7 +502,7 @@ export default function AiInsights() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-foreground">{r.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Projected impact: <span className="font-semibold text-success">{r.impact}</span></p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Projected impact: <span className="font-semibold text-success">{r.impact}</span></p>
                   </div>
                   <Button
                     size="sm"
@@ -532,8 +532,8 @@ export default function AiInsights() {
               ].map((a, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 rounded border border-border bg-background px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <div className="rounded bg-secondary px-2 py-1 font-mono text-[11px] text-muted-foreground">{a.d}</div>
-                    <p className="text-xs text-foreground">{a.action}</p>
+                    <div className="rounded bg-secondary px-2 py-1 font-mono text-xs text-muted-foreground">{a.d}</div>
+                    <p className="text-sm text-foreground">{a.action}</p>
                   </div>
                   <Badge variant="outline" className={
                     a.priority === "High" ? "border-destructive/40 bg-destructive/10 text-destructive" :
@@ -549,7 +549,7 @@ export default function AiInsights() {
         </TabsContent>
       </Tabs>
 
-      <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
         <BarChart3 className="h-3 w-3" />
         Insights generated by ProcureAI v3.2 · Trained on 4.2 yrs of AP procurement data · Confidence intervals 90–95% · Not a substitute for official audit.
       </p>
@@ -565,21 +565,21 @@ export default function AiInsights() {
           </DialogHeader>
           {selectedAnomaly && (
             <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-muted-foreground">Reference</p><p className="font-mono font-semibold">{selectedAnomaly.tenderId}</p></div>
                 <div><p className="text-muted-foreground">Entity</p><p className="font-medium">{selectedAnomaly.tenderName}</p></div>
                 <div><p className="text-muted-foreground">Severity</p>
-                  <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold ${RISK_TONE[selectedAnomaly.severity]}`}>{selectedAnomaly.severity}</span>
+                  <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-xs font-semibold ${RISK_TONE[selectedAnomaly.severity]}`}>{selectedAnomaly.severity}</span>
                 </div>
                 <div><p className="text-muted-foreground">Type</p><p className="font-medium">{selectedAnomaly.type}</p></div>
               </div>
               <div className="rounded-sm border border-border bg-secondary/40 p-3">
-                <p className="mb-1 text-[11px] font-bold uppercase text-primary">AI Finding</p>
-                <p className="text-xs leading-relaxed">{selectedAnomaly.description}</p>
+                <p className="mb-1 text-xs font-bold uppercase text-primary">AI Finding</p>
+                <p className="text-sm leading-relaxed">{selectedAnomaly.description}</p>
               </div>
               <div className="rounded-sm border border-accent/40 bg-accent/5 p-3">
-                <p className="mb-1 text-[11px] font-bold uppercase text-accent">Recommended Action</p>
-                <p className="text-xs leading-relaxed">{selectedAnomaly.recommendation}</p>
+                <p className="mb-1 text-xs font-bold uppercase text-accent">Recommended Action</p>
+                <p className="text-sm leading-relaxed">{selectedAnomaly.recommendation}</p>
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="outline" size="sm" className="h-8 rounded-sm text-xs" onClick={() => setSelectedAnomaly(null)}>Dismiss</Button>
@@ -600,8 +600,8 @@ function Stat({ label, value, suffix, tone }: { label: string; value: string; su
   const toneCls = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-info";
   return (
     <div className="rounded border border-border bg-background px-3 py-2 text-center">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`text-lg font-bold ${toneCls}`}>{value}<span className="text-xs font-medium text-muted-foreground">{suffix}</span></p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`text-lg font-bold ${toneCls}`}>{value}<span className="text-sm font-medium text-muted-foreground">{suffix}</span></p>
     </div>
   );
 }
@@ -612,9 +612,9 @@ function KpiCard({ icon: Icon, label, value, delta, up }: { icon: React.ElementT
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
             <p className="mt-1 text-lg font-bold text-primary">{value}</p>
-            <p className={`mt-0.5 text-[11px] font-semibold ${up ? "text-success" : "text-muted-foreground"}`}>{delta}</p>
+            <p className={`mt-0.5 text-xs font-semibold ${up ? "text-success" : "text-muted-foreground"}`}>{delta}</p>
           </div>
           <div className="rounded-md bg-primary/10 p-2 text-primary">
             <Icon className="h-4 w-4" />

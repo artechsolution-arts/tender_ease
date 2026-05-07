@@ -31,6 +31,7 @@ const translations = {
 
     // ── Nav items ───────────────────────────────────────────────────────────
     nav_overview: "Overview",
+    nav_projects: "Projects",
     nav_tenders: "Tenders",
     nav_vendors: "Vendors",
     nav_vendor_dashboard: "Vendor Dashboard",
@@ -42,6 +43,7 @@ const translations = {
     nav_notifications: "Notifications",
     nav_compliance: "Compliance / CVC",
     nav_help: "Help Desk",
+    nav_my_profile: "My Profile",
 
     // ── Footer ──────────────────────────────────────────────────────────────
     footer_portal_title: "AP e-Procurement",
@@ -342,6 +344,7 @@ const translations = {
 
     // ── Nav items ───────────────────────────────────────────────────────────
     nav_overview: "अवलोकन",
+    nav_projects: "परियोजनाएं",
     nav_tenders: "निविदाएं",
     nav_vendors: "विक्रेता",
     nav_vendor_dashboard: "विक्रेता डैशबोर्ड",
@@ -353,6 +356,7 @@ const translations = {
     nav_notifications: "सूचनाएं",
     nav_compliance: "अनुपालन / CVC",
     nav_help: "सहायता केंद्र",
+    nav_my_profile: "मेरी प्रोफाइल",
 
     // ── Footer ──────────────────────────────────────────────────────────────
     footer_portal_title: "AP ई-खरीद",
@@ -639,6 +643,7 @@ const translations = {
 
     // ── Nav items ───────────────────────────────────────────────────────────
     nav_overview: "అవలోకనం",
+    nav_projects: "ప్రాజెక్టులు",
     nav_tenders: "టెండర్లు",
     nav_vendors: "వెండర్లు",
     nav_vendor_dashboard: "వెండర్ డాష్‌బోర్డ్",
@@ -650,6 +655,7 @@ const translations = {
     nav_notifications: "నోటిఫికేషన్లు",
     nav_compliance: "సమ్మతి / CVC",
     nav_help: "హెల్ప్ డెస్క్",
+    nav_my_profile: "నా ప్రొఫైల్",
 
     // ── Footer ──────────────────────────────────────────────────────────────
     footer_portal_title: "AP ఈ-ప్రొక్యూర్మెంట్",

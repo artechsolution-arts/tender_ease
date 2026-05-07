@@ -16,6 +16,7 @@ import Reports from "./pages/Reports.tsx";
 import Compliance from "./pages/Compliance.tsx";
 import HelpDesk from "./pages/HelpDesk.tsx";
 import VendorDashboard from "./pages/VendorDashboard.tsx";
+import VendorProjects from "./pages/VendorProjects.tsx";
 import VendorSignup from "./pages/VendorSignup.tsx";
 import VendorVerification from "./pages/VendorVerification.tsx";
 import Documents from "./pages/Documents.tsx";
@@ -39,15 +40,16 @@ const App = () => (
               <Route path="/vendor-signup" element={<VendorSignup />} />
               <Route path="/vendor-verification" element={<ProtectedRoute roles={["vendor"]}><VendorVerification /></ProtectedRoute>} />
               <Route path="/" element={<ProtectedRoute roles={["admin"]}><Index /></ProtectedRoute>} />
-              <Route path="/tenders" element={<ProtectedRoute roles={["admin"]}><Tenders /></ProtectedRoute>} />
+              <Route path="/tenders" element={<ProtectedRoute roles={["admin", "vendor"]}><Tenders /></ProtectedRoute>} />
               <Route path="/vendors" element={<ProtectedRoute roles={["admin"]}><Vendors /></ProtectedRoute>} />
               <Route path="/vendor-dashboard" element={<ProtectedRoute roles={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
+              <Route path="/vendor-projects" element={<ProtectedRoute roles={["vendor"]}><VendorProjects /></ProtectedRoute>} />
               <Route path="/bid-evaluation" element={<ProtectedRoute roles={["admin"]}><BidEvaluation /></ProtectedRoute>} />
-              <Route path="/awards" element={<ProtectedRoute roles={["admin"]}><Awards /></ProtectedRoute>} />
+              <Route path="/awards" element={<ProtectedRoute roles={["admin", "vendor"]}><Awards /></ProtectedRoute>} />
               <Route path="/ai-insights" element={<ProtectedRoute roles={["admin"]}><AiInsights /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute roles={["admin"]}><Reports /></ProtectedRoute>} />
-              <Route path="/compliance" element={<ProtectedRoute roles={["admin"]}><Compliance /></ProtectedRoute>} />
-              <Route path="/help" element={<ProtectedRoute roles={["admin"]}><HelpDesk /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute roles={["admin", "vendor"]}><Reports /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute roles={["admin", "vendor"]}><Compliance /></ProtectedRoute>} />
+              <Route path="/help" element={<ProtectedRoute roles={["admin", "vendor"]}><HelpDesk /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute roles={["admin", "vendor"]}><Notifications /></ProtectedRoute>} />
               <Route path="/documents" element={<ProtectedRoute roles={["admin", "vendor"]}><Documents /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

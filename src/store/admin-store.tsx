@@ -140,6 +140,8 @@ interface AdminCtx {
   notifications: AppNotification[];
   emails: EmailLog[];
   unreadCount: number;
+  refreshTenders: () => void;
+  refreshVendors: () => void;
   createTender: (t: Omit<Tender, "id" | "createdAt" | "history" | "status">) => Tender;
   updateTender: (id: string, patch: Partial<Tender>, changes: string) => void;
   changeStatus: (id: string, next: TenderStatus, awardedVendorId?: string) => void;
@@ -427,6 +429,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
 
   const value: AdminCtx = {
     vendors, pendingVendors, tenders, notifications, emails, unreadCount,
+    refreshTenders: fetchTenders, refreshVendors: fetchVendors,
     createTender, updateTender, changeStatus, deleteTender,
     markAllRead, markRead, approveVendor, rejectVendor, addPendingVendor,
   };

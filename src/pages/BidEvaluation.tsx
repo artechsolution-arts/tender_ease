@@ -212,7 +212,7 @@ export default function BidEvaluation() {
                 <FileCheck2 className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{T("be_select_tender")}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">{T("be_select_tender")}</p>
                 <Select value={selectedId} onValueChange={setSelectedId}>
                   <SelectTrigger className="mt-0.5 h-9 max-w-2xl border-0 bg-transparent p-0 text-sm font-bold text-primary shadow-none focus:ring-0">
                     <SelectValue placeholder={T("be_select_tender")} />
@@ -228,7 +228,7 @@ export default function BidEvaluation() {
               </div>
             </div>
             {tender && (
-              <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div>
                   <p className="text-muted-foreground">{T("tenders_dialog_est_value")}</p>
                   <p className="font-semibold text-primary">{fmtINR(tender.estimatedValue)}</p>
@@ -259,26 +259,26 @@ export default function BidEvaluation() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="rounded border border-accent/30 bg-card p-3">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-accent">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase text-accent">
                   <Trophy className="h-3.5 w-3.5" /> {T("be_winner")}
                 </div>
                 <p className="mt-1 text-sm font-bold text-primary">{vendorOf(winner.vendorId)?.companyName}</p>
-                <p className="text-xs text-muted-foreground">Composite score: <span className="font-semibold text-accent">{winner.composite.toFixed(1)}/100</span></p>
-                <p className="text-xs text-muted-foreground">Quoted: {fmtINR(winner.bidAmount)}</p>
+                <p className="text-sm text-muted-foreground">Composite score: <span className="font-semibold text-accent">{winner.composite.toFixed(1)}/100</span></p>
+                <p className="text-sm text-muted-foreground">Quoted: {fmtINR(winner.bidAmount)}</p>
               </div>
               <div className="rounded border border-border bg-card p-3">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-info">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase text-info">
                   <CheckCircle2 className="h-3.5 w-3.5" /> {T("be_l1")}
                 </div>
                 <p className="mt-1 text-sm font-bold text-primary">{vendorOf(l1.vendorId)?.companyName}</p>
-                <p className="text-xs text-muted-foreground">Quoted: <span className="font-semibold">{fmtINR(l1.bidAmount)}</span></p>
-                <p className="text-xs text-muted-foreground">Variance vs estimate: {(((l1.bidAmount - tender.estimatedValue) / tender.estimatedValue) * 100).toFixed(1)}%</p>
+                <p className="text-sm text-muted-foreground">Quoted: <span className="font-semibold">{fmtINR(l1.bidAmount)}</span></p>
+                <p className="text-sm text-muted-foreground">Variance vs estimate: {(((l1.bidAmount - tender.estimatedValue) / tender.estimatedValue) * 100).toFixed(1)}%</p>
               </div>
               <div className="rounded border border-border bg-card p-3">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-warning">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase text-warning">
                   <AlertTriangle className="h-3.5 w-3.5" /> Risk Flags
                 </div>
-                <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
                   <li>• {ranked.filter((r) => !r.documentsComplete).length} bid(s) with missing EMD/BG</li>
                   <li>• {ranked.filter((r) => vendorOf(r.vendorId)?.blacklisted).length} blacklisted vendor(s)</li>
                   <li>• Price spread: {((Math.max(...bids.map(b=>b.bidAmount)) - lowestBid) / lowestBid * 100).toFixed(1)}%</li>
@@ -325,10 +325,10 @@ export default function BidEvaluation() {
                           </TableCell>
                           <TableCell>
                             <p className="text-sm font-semibold text-primary">{v?.companyName}</p>
-                            <p className="text-[11px] text-muted-foreground">{b.vendorId} · {b.deliveryDays} days delivery</p>
+                            <p className="text-xs text-muted-foreground">{b.vendorId} · {b.deliveryDays} days delivery</p>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">{fmtINR(b.bidAmount)}</TableCell>
-                          <TableCell className={`text-right text-xs font-semibold ${variance < 0 ? "text-success" : "text-warning"}`}>
+                          <TableCell className={`text-right text-sm font-semibold ${variance < 0 ? "text-success" : "text-warning"}`}>
                             {variance > 0 ? "+" : ""}{variance.toFixed(1)}%
                           </TableCell>
                           <TableCell className="text-center text-sm font-semibold">{b.technicalScore}</TableCell>
@@ -364,7 +364,7 @@ export default function BidEvaluation() {
                       <CardTitle className="text-sm text-primary">{v?.companyName}</CardTitle>
                       <Badge variant="outline">{b.vendorId}</Badge>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">{b.remarks}</p>
+                    <p className="text-xs text-muted-foreground">{b.remarks}</p>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {[
@@ -373,7 +373,7 @@ export default function BidEvaluation() {
                       { label: "Compliance", val: b.complianceScore },
                     ].map((m) => (
                       <div key={m.label}>
-                        <div className="mb-1 flex justify-between text-[11px]">
+                        <div className="mb-1 flex justify-between text-xs">
                           <span className="text-muted-foreground">{m.label}</span>
                           <span className="font-semibold text-primary">{m.val}/100</span>
                         </div>
@@ -411,7 +411,7 @@ export default function BidEvaluation() {
                           <TableCell className="text-center">{ok(!!v?.pan)}</TableCell>
                           <TableCell className="text-center">{ok(b.documentsComplete)}</TableCell>
                           <TableCell className="text-center">{ok(!v?.blacklisted)}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{b.remarks}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{b.remarks}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -454,10 +454,10 @@ export default function BidEvaluation() {
                   {/* Vendor profile */}
                   {v && (
                     <div className="rounded-sm border border-border bg-secondary/20 p-4">
-                      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                         <Building2 className="h-3 w-3" /> Vendor Profile
                       </p>
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                         <div><p className="text-muted-foreground">Vendor ID</p><p className="font-mono font-semibold">{v.id}</p></div>
                         <div><p className="text-muted-foreground">Category</p><p className="font-semibold">{v.category}</p></div>
                         <div><p className="text-muted-foreground">GST No.</p><p className="font-mono">{v.gst || "—"}</p></div>
@@ -479,8 +479,8 @@ export default function BidEvaluation() {
 
                   {/* Bid details */}
                   <div>
-                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bid Details</p>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
+                    <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Bid Details</p>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-sm border border-border bg-card p-3">
                         <p className="text-muted-foreground">Quoted Amount</p>
                         <p className="mt-0.5 text-lg font-bold text-primary">{fmtINR(selectedBid.bidAmount)}</p>
@@ -500,7 +500,7 @@ export default function BidEvaluation() {
 
                   {/* Score breakdown */}
                   <div>
-                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score Breakdown (QCBS 80:20)</p>
+                    <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Score Breakdown (QCBS 80:20)</p>
                     <div className="space-y-3">
                       {[
                         { label: "Price Score (40%)", val: priceScore, weight: 0.4 },
@@ -509,9 +509,9 @@ export default function BidEvaluation() {
                         { label: "Compliance (10%)", val: selectedBid.complianceScore, weight: 0.1 },
                       ].map(({ label, val, weight }) => (
                         <div key={label}>
-                          <div className="mb-1 flex items-center justify-between text-xs">
+                          <div className="mb-1 flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">{label}</span>
-                            <span className="font-semibold text-foreground">{val.toFixed(1)} <span className="text-muted-foreground text-[10px]">(weighted: {(val * weight).toFixed(1)})</span></span>
+                            <span className="font-semibold text-foreground">{val.toFixed(1)} <span className="text-muted-foreground text-xs">(weighted: {(val * weight).toFixed(1)})</span></span>
                           </div>
                           <Progress value={val} className="h-2" />
                         </div>
@@ -529,8 +529,8 @@ export default function BidEvaluation() {
 
                   {/* Compliance */}
                   <div>
-                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Compliance Status</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Compliance Status</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       {[
                         { label: "GST Registration", ok: !!v?.gst },
                         { label: "PAN Card", ok: !!v?.pan },
@@ -544,7 +544,7 @@ export default function BidEvaluation() {
                       ))}
                     </div>
                     {selectedBid.remarks && (
-                      <p className="mt-2 text-xs text-muted-foreground italic">
+                      <p className="mt-2 text-sm text-muted-foreground italic">
                         Remarks: {selectedBid.remarks}
                       </p>
                     )}

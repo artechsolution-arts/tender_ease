@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,33 @@ import { fmtDate, fmtINR, useAdmin, type Tender } from "@/store/admin-store";
 import { TenderStatusBadge } from "@/components/admin/TenderStatusBadge";
 import { toast } from "@/hooks/use-toast";
 import { useT } from "@/lib/useT";
+import { useAuth } from "@/store/auth-store";
 
 export default function Awards() {
   const { tenders, vendors } = useAdmin();
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const T = useT();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Tender | null>(null);
+  const [activeCard, setActiveCard] = useState<string | null>(null);
+  const registerRef = useRef<HTMLDivElement>(null);
 
-  const awarded = useMemo(
-    () => tenders.filter((t) => t.status === "Awarded" && t.awardedVendorId),
-    [tenders],
-  );
+  const handleCardClick = (key: string, vendorSearch?: string) => {
+    const next = activeCard === key ? null : key;
+    setActiveCard(next);
+    if (next) {
+      if (vendorSearch !== undefined) setQuery(vendorSearch);
+      registerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      setQuery("");
+    }
+  };
+
+  const awarded = useMemo(() => {
+    const all = tenders.filter((t) => t.status === "Awarded" && t.awardedVendorId);
+    return isAdmin ? all : all.filter((t) => t.awardedVendorId === currentUser?.vendorId);
+  }, [tenders, isAdmin, currentUser]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -103,63 +119,48 @@ Tender Inviting Authority`;
     <AdminLayout
       title={T("awards_title")}
       breadcrumbs={[{ label: T("common_home"), to: "/" }, { label: T("nav_awards") }]}
-      actions={
+      actions={isAdmin ? (
         <Button variant="outline" size="sm" onClick={downloadRegister}>
           <Download className="mr-1.5 h-3.5 w-3.5" /> Export Register
         </Button>
-      }
+      ) : undefined}
     >
       <div className="space-y-5">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Card className="border-l-4 border-l-success">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{T("awards_total")}</p>
-                <p className="mt-1 text-2xl font-bold text-primary">{awarded.length}</p>
-                <p className="text-[11px] text-success">FY 2025-26</p>
-              </div>
-              <Trophy className="h-7 w-7 text-success/70" />
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-primary">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{T("awards_value")}</p>
-                <p className="mt-1 text-2xl font-bold text-primary">{fmtINR(totalValue)}</p>
-                <p className="text-[11px] text-muted-foreground">across {filtered.length} contract(s)</p>
-              </div>
-              <IndianRupee className="h-7 w-7 text-primary/60" />
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-info">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{T("vendors_total")}</p>
-                <p className="mt-1 text-2xl font-bold text-primary">{uniqueVendors}</p>
-                <p className="text-[11px] text-info">empanelled & active</p>
-              </div>
-              <ShieldCheck className="h-7 w-7 text-info/70" />
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-accent">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Avg. Award Cycle</p>
-                <p className="mt-1 text-2xl font-bold text-primary">{avgCycle} <span className="text-base font-medium">days</span></p>
-                <p className="text-[11px] text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12% faster YoY</p>
-              </div>
-              <Gavel className="h-7 w-7 text-accent" />
-            </CardContent>
-          </Card>
+          {[
+            { key: "total",   border: "border-l-success",  icon: <Trophy className="h-7 w-7 text-success/70" />,      label: T("awards_total"),    value: String(awarded.length),  sub: <span className="text-xs text-success">FY 2025-26</span>,                                                                       search: "" },
+            { key: "value",   border: "border-l-primary",  icon: <IndianRupee className="h-7 w-7 text-primary/60" />, label: T("awards_value"),    value: fmtINR(totalValue),      sub: <span className="text-xs text-muted-foreground">across {filtered.length} contract(s)</span>,                                    search: "" },
+            { key: "vendors", border: "border-l-info",     icon: <ShieldCheck className="h-7 w-7 text-info/70" />,    label: T("vendors_total"),   value: String(uniqueVendors),   sub: <span className="text-xs text-info">empanelled & active</span>,                                                                 search: "" },
+            { key: "cycle",   border: "border-l-accent",   icon: <Gavel className="h-7 w-7 text-accent" />,           label: "Avg. Award Cycle",   value: `${avgCycle} days`,      sub: <span className="text-xs text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12% faster YoY</span>, search: "" },
+          ].map(({ key, border, icon, label, value, sub, search }) => {
+            const isActive = activeCard === key;
+            return (
+              <Card
+                key={key}
+                className={`border-l-4 ${border} cursor-pointer transition-all hover:shadow-md ${isActive ? "ring-2 ring-primary/30 bg-primary/5" : ""}`}
+                onClick={() => handleCardClick(key, search)}
+              >
+                <CardContent className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className="mt-1 text-2xl font-bold text-primary">{value}</p>
+                    {sub}
+                    {isActive && <p className="text-xs text-muted-foreground mt-0.5">↓ Viewing register below</p>}
+                  </div>
+                  {icon}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        <Card>
+        <Card ref={registerRef}>
           <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b bg-secondary/40 py-3">
             <div>
               <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-primary">
                 <Award className="h-4 w-4 text-accent" /> Award Register
               </CardTitle>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">All Letter of Award (LoA) issued under GFR 2017 / CVC guidelines.</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">All Letter of Award (LoA) issued under GFR 2017 / CVC guidelines.</p>
             </div>
             <div className="relative w-full max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -190,18 +191,18 @@ Tender Inviting Authority`;
                   const v = vendorOf(t.awardedVendorId);
                   const award = t.history.find((h) => h.changes.toLowerCase().includes("awarded"));
                   return (
-                    <TableRow key={t.id} className="text-xs cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setSelected(t)}>
-                      <TableCell className="font-mono font-semibold text-primary">
+                    <TableRow key={t.id} className="text-sm cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => setSelected(t)}>
+                      <TableCell className="font-semibold text-primary">
                         LOA/{t.id}
-                        <p className="font-sans text-[10px] font-normal text-muted-foreground">{t.id}</p>
+                        <p className="font-sans text-xs font-normal text-muted-foreground">{t.id}</p>
                       </TableCell>
                       <TableCell className="max-w-[260px]">
                         <p className="line-clamp-1 font-semibold">{t.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{t.category}</p>
+                        <p className="text-xs text-muted-foreground">{t.category}</p>
                       </TableCell>
                       <TableCell>
                         <p className="font-semibold">{v?.companyName ?? "—"}</p>
-                        <p className="text-[10px] text-muted-foreground">{v?.id} · Score {v?.pastPerformance}/100</p>
+                        <p className="text-xs text-muted-foreground">{v?.id} · Score {v?.pastPerformance}/100</p>
                       </TableCell>
                       <TableCell>{t.department}</TableCell>
                       <TableCell className="text-right font-semibold">{fmtINR(t.estimatedValue)}</TableCell>
@@ -220,7 +221,7 @@ Tender Inviting Authority`;
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-xs text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       {T("awards_no_awards")}
                     </TableCell>
                   </TableRow>
@@ -254,7 +255,7 @@ Tender Inviting Authority`;
                     <TabsTrigger value="history">History</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="summary" className="mt-3 space-y-3 text-xs">
+                  <TabsContent value="summary" className="mt-3 space-y-3 text-sm">
                     <div className="rounded border bg-secondary/30 p-3">
                       <p className="font-semibold text-primary">{selected.name}</p>
                       <p className="mt-1 text-muted-foreground">{selected.description}</p>
@@ -269,11 +270,11 @@ Tender Inviting Authority`;
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="vendor" className="mt-3 space-y-3 text-xs">
+                  <TabsContent value="vendor" className="mt-3 space-y-3 text-sm">
                     {v ? (
                       <>
                         <div className="rounded border bg-success/5 p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-success">Awarded Bidder</p>
+                          <p className="text-xs uppercase tracking-wide text-success">Awarded Bidder</p>
                           <p className="text-sm font-bold text-primary">{v.companyName}</p>
                           <p className="text-muted-foreground">{v.contactPerson} · {v.email} · {v.phone}</p>
                         </div>
@@ -291,7 +292,7 @@ Tender Inviting Authority`;
                     )}
                   </TabsContent>
 
-                  <TabsContent value="history" className="mt-3 space-y-2 text-xs">
+                  <TabsContent value="history" className="mt-3 space-y-2 text-sm">
                     {selected.history.length === 0 && (
                       <p className="text-muted-foreground">No version history recorded.</p>
                     )}
@@ -299,9 +300,9 @@ Tender Inviting Authority`;
                       <div key={h.version} className="rounded border-l-2 border-l-accent bg-secondary/30 p-2.5">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-primary">v{h.version} · {h.changes}</p>
-                          <span className="text-[10px] text-muted-foreground">{fmtDate(h.editedAt)}</span>
+                          <span className="text-xs text-muted-foreground">{fmtDate(h.editedAt)}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">by {h.editedBy}</p>
+                        <p className="text-xs text-muted-foreground">by {h.editedBy}</p>
                       </div>
                     ))}
                   </TabsContent>
@@ -325,7 +326,7 @@ Tender Inviting Authority`;
 function Field({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="rounded border bg-card p-2">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={`mt-0.5 ${highlight ? "font-bold text-success" : "font-semibold text-foreground"}`}>{value}</p>
     </div>
   );

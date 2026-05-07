@@ -50,21 +50,35 @@ export default function Notifications() {
       }
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="rounded-sm border-l-4 border-l-primary p-3">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("notif_in_app")}</p>
+        <button
+          type="button"
+          onClick={() => setTab("in_app")}
+          className={`rounded-sm border-l-4 border-l-primary p-3 text-left shadow-sm transition-all hover:shadow-md group ${tab === "in_app" ? "border border-primary bg-primary/10" : "border border-border bg-card hover:bg-primary/5"}`}
+        >
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("notif_in_app")}</p>
           <p className="text-2xl font-bold text-primary">{visibleNotifications.length}</p>
-          <p className="text-[10px] text-muted-foreground">{visibleNotifications.filter((n) => !n.read).length} {T("notif_unread")}</p>
-        </Card>
-        <Card className="rounded-sm border-l-4 border-l-accent p-3">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("notif_emails")}</p>
+          <p className="text-xs text-muted-foreground">{visibleNotifications.filter((n) => !n.read).length} {T("notif_unread")}</p>
+          <p className={`mt-1 text-xs font-semibold uppercase tracking-wide ${tab === "in_app" ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`}>
+            {tab === "in_app" ? "▶ Viewing In-App" : "→ View In-App"}
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("email")}
+          className={`rounded-sm border-l-4 border-l-accent p-3 text-left shadow-sm transition-all hover:shadow-md group ${tab === "email" ? "border border-accent bg-accent/10" : "border border-border bg-card hover:bg-accent/5"}`}
+        >
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("notif_emails")}</p>
           <p className="text-2xl font-bold text-accent">{visibleEmails.length}</p>
-          <p className="text-[10px] text-muted-foreground">{T("notif_via_smtp")}</p>
-        </Card>
-        <Card className="rounded-sm border-l-4 border-l-success p-3">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{T("notif_triggers")}</p>
+          <p className="text-xs text-muted-foreground">{T("notif_via_smtp")}</p>
+          <p className={`mt-1 text-xs font-semibold uppercase tracking-wide ${tab === "email" ? "text-accent" : "text-muted-foreground group-hover:text-accent"}`}>
+            {tab === "email" ? "▶ Viewing Email Log" : "→ View Email Log"}
+          </p>
+        </button>
+        <div className="rounded-sm border border-border border-l-4 border-l-success bg-card p-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{T("notif_triggers")}</p>
           <p className="text-2xl font-bold text-success">4</p>
-          <p className="text-[10px] text-muted-foreground">{T("notif_trigger_events")}</p>
-        </Card>
+          <p className="text-xs text-muted-foreground">{T("notif_trigger_events")}</p>
+        </div>
       </div>
 
       <Card className="mt-4 rounded-sm border-border">
@@ -82,7 +96,7 @@ export default function Notifications() {
                 }`}
               >
                 <t.icon className="h-3.5 w-3.5" /> {T(t.labelKey)}
-                <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-[10px] text-primary">{t.count}</span>
+                <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-primary">{t.count}</span>
               </button>
             ))}
           </div>
@@ -105,8 +119,8 @@ export default function Notifications() {
                       <p className={`text-sm ${n.read ? "font-normal" : "font-bold"} text-foreground`}>{n.title}</p>
                       {!n.read && <span className="h-2 w-2 rounded-full bg-accent" />}
                     </div>
-                    <p className="text-xs text-muted-foreground">{n.body}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">{n.body}</p>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{fmtDateTime(n.createdAt)}</span>
                       <span>·</span>
                       <span className="rounded-sm bg-secondary px-1.5 py-0.5">{T("notif_audience")} {n.audience}</span>
@@ -137,9 +151,9 @@ export default function Notifications() {
                     <p className="text-sm font-semibold text-foreground">{e.subject}</p>
                     <span className="rounded-sm bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase text-success ring-1 ring-success/30">{e.status}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">To: <span className="font-mono">{e.to}</span></p>
-                  <p className="mt-1 text-xs text-foreground/80 line-clamp-2">{e.body}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{fmtDateTime(e.sentAt)}</p>
+                  <p className="text-sm text-muted-foreground">To: <span className="font-mono">{e.to}</span></p>
+                  <p className="mt-1 text-sm text-foreground/80 line-clamp-2">{e.body}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{fmtDateTime(e.sentAt)}</p>
                 </div>
               </div>
             ))}

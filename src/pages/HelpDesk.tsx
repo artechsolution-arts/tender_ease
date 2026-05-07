@@ -248,27 +248,27 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <div className="rounded-sm border-2 border-accent/50 bg-accent/5 p-4 shadow-sm">
           <Phone className="mb-2 h-5 w-5 text-accent" />
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Toll Free Helpline</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Toll Free Helpline</p>
           <p className="text-base font-bold text-primary">1800-3070-2232</p>
-          <p className="text-[11px] text-muted-foreground">24×7 for critical issues</p>
+          <p className="text-xs text-muted-foreground">24×7 for critical issues</p>
         </div>
         <div className="rounded-sm border border-border bg-card p-4 shadow-sm">
           <Mail className="mb-2 h-5 w-5 text-info" />
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Email Support</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Email Support</p>
           <p className="text-sm font-semibold text-primary break-all">helpdesk@apeprocurement.gov.in</p>
-          <p className="text-[11px] text-muted-foreground">SLA: 4 business hours</p>
+          <p className="text-xs text-muted-foreground">SLA: 4 business hours</p>
         </div>
         <div className="rounded-sm border border-border bg-card p-4 shadow-sm">
           <Clock className="mb-2 h-5 w-5 text-success" />
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Working Hours</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Working Hours</p>
           <p className="text-sm font-semibold text-primary">Mon–Sat · 9 AM – 6 PM</p>
-          <p className="text-[11px] text-muted-foreground">Closed on gazetted holidays</p>
+          <p className="text-xs text-muted-foreground">Closed on gazetted holidays</p>
         </div>
         <div className="rounded-sm border border-border bg-card p-4 shadow-sm">
           <MapPin className="mb-2 h-5 w-5 text-warning" />
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Office Address</p>
-          <p className="text-xs font-semibold text-primary">3rd Floor, Block-C, AP Secretariat</p>
-          <p className="text-[11px] text-muted-foreground">Velagapudi, Amaravati – 522238</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Office Address</p>
+          <p className="text-sm font-semibold text-primary">3rd Floor, Block-C, AP Secretariat</p>
+          <p className="text-xs text-muted-foreground">Velagapudi, Amaravati – 522238</p>
         </div>
       </div>
 
@@ -286,32 +286,32 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
           <div className="grid gap-4 lg:grid-cols-3">
             <form onSubmit={submitTicket} className="rounded-sm border border-border bg-card shadow-sm lg:col-span-2">
               <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Submit a Support Request</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Submit a Support Request</h3>
               </div>
               <div className="space-y-3 p-4">
                 <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-primary">Subject *</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-primary">Subject *</label>
                   <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Brief summary of your issue" className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-primary">Category</label>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-primary">Category</label>
                     <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="h-9 w-full rounded-sm border border-input bg-background px-2 text-sm">
                       {["Tender Mgmt", "Vendor Mgmt", "Bid Evaluation", "Digital Signature", "Payments", "Account Access", "Other"].map((c) => <option key={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-primary">Priority</label>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-primary">Priority</label>
                     <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as SupportTicket["priority"] })} className="h-9 w-full rounded-sm border border-input bg-background px-2 text-sm">
                       {(["Low", "Medium", "High", "Critical"] as const).map((p) => <option key={p}>{p}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-primary">Description *</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-primary">Description *</label>
                   <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={6} placeholder="Provide detailed steps to reproduce, error messages, and impact on workflow." className="w-full rounded-sm border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
                 </div>
-                <div className="flex items-center justify-between rounded-sm border border-border bg-secondary/40 px-3 py-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between rounded-sm border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5"><AlertCircle className="h-3 w-3" /> Critical tickets are escalated to L2 within 30 minutes.</span>
                   <span>SLA: 4 hrs (Med) · 1 hr (High)</span>
                 </div>
@@ -346,7 +346,7 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
               <div className="rounded-sm border-2 border-success/40 bg-success/5 p-3 shadow-sm">
                 <CheckCircle2 className="mb-1 h-4 w-4 text-success" />
                 <p className="text-xs font-semibold text-success">SLA Performance</p>
-                <p className="text-[11px] text-muted-foreground">94% tickets resolved within SLA in last 30 days.</p>
+                <p className="text-xs text-muted-foreground">94% tickets resolved within SLA in last 30 days.</p>
               </div>
             </div>
           </div>
@@ -356,11 +356,11 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
         <TabsContent value="tickets">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">My Support Tickets</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">My Support Tickets</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Ticket ID</th>
                     <th className="px-3 py-2 text-left">Subject</th>
@@ -374,7 +374,7 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
                 <tbody className="divide-y divide-border">
                   {tickets.map((t) => (
                     <tr key={t.id} className="hover:bg-secondary/40">
-                      <td className="px-3 py-2 font-mono text-[11px] text-info">{t.id}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-info">{t.id}</td>
                       <td className="px-3 py-2 font-medium">{t.subject}</td>
                       <td className="px-3 py-2 text-muted-foreground">{t.category}</td>
                       <td className="px-3 py-2">
@@ -397,7 +397,7 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
         <TabsContent value="faq">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between gap-2 border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Frequently Asked Questions</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Frequently Asked Questions</h3>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search FAQs…" className="h-7 w-56 rounded-sm border border-input bg-background pl-7 pr-2 text-xs outline-none focus:ring-1 focus:ring-ring" />
@@ -410,11 +410,11 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
                     <AccordionTrigger className="text-left text-sm hover:text-primary">
                       <span className="flex items-start gap-2"><HelpCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" /> {f.q}</span>
                     </AccordionTrigger>
-                    <AccordionContent className="pl-6 text-xs leading-relaxed text-muted-foreground">{f.a}</AccordionContent>
+                    <AccordionContent className="pl-6 text-sm leading-relaxed text-muted-foreground">{f.a}</AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
-              {filteredFaqs.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground">No FAQs match your search.</p>}
+              {filteredFaqs.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No FAQs match your search.</p>}
             </div>
           </div>
         </TabsContent>
@@ -426,12 +426,12 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
               <div key={g.title} className="rounded-sm border border-border bg-card p-4 shadow-sm transition hover:border-accent">
                 <div className="mb-2 flex items-center justify-between">
                   <g.icon className="h-5 w-5 text-accent" />
-                  <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{g.type}</span>
+                  <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-semibold text-primary">{g.type}</span>
                 </div>
                 <h4 className="text-sm font-semibold leading-snug">{g.title}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{g.desc}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{g.desc}</p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">{g.size}</span>
+                  <span className="text-xs text-muted-foreground">{g.size}</span>
                   <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => openGuide(g)}>
                     <Download className="h-3 w-3" /> Open
                   </Button>
@@ -445,7 +445,7 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
         <TabsContent value="contacts">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Departmental Nodal Officers</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Departmental Nodal Officers</h3>
             </div>
             <div className="grid gap-0 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
               {[
@@ -463,11 +463,11 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-primary">{c.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{c.role} · {c.dept}</p>
+                      <p className="text-xs text-muted-foreground">{c.role} · {c.dept}</p>
                     </div>
                   </div>
-                  <p className="flex items-center gap-1.5 pl-11 text-xs"><Phone className="h-3 w-3 text-accent" /> {c.phone}</p>
-                  <p className="flex items-center gap-1.5 pl-11 text-xs"><Mail className="h-3 w-3 text-info" /> {c.email}</p>
+                  <p className="flex items-center gap-1.5 pl-11 text-sm"><Phone className="h-3 w-3 text-accent" /> {c.phone}</p>
+                  <p className="flex items-center gap-1.5 pl-11 text-sm"><Mail className="h-3 w-3 text-info" /> {c.email}</p>
                 </div>
               ))}
             </div>
@@ -475,7 +475,7 @@ NOTE: This is a template document. Insert actual values before use. Get it vette
         </TabsContent>
       </Tabs>
 
-      <div className="mt-4 flex items-center gap-2 rounded-sm border border-border bg-secondary/40 px-3 py-2 text-[11px] text-muted-foreground">
+      <div className="mt-4 flex items-center gap-2 rounded-sm border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
         <Ticket className="h-3 w-3" />
         For grievance redressal under PIDPI Resolution 2004, contact the Chief Vigilance Officer directly. All communications are confidential.
       </div>

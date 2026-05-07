@@ -17,6 +17,8 @@ export default function Reports() {
   const T = useT();
   const [period, setPeriod] = useState<"month" | "quarter" | "fy">("fy");
   const [department, setDepartment] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeCard, setActiveCard] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "MIS Reports — AP e-Procurement";
@@ -224,28 +226,36 @@ export default function Reports() {
           <option value="all">All Departments</option>
           {departments.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
-        <span className="ml-auto text-[11px] text-muted-foreground">Showing {filtered.length} tenders · Generated 23-Apr-2026 09:42 IST</span>
+        <span className="ml-auto text-xs text-muted-foreground">Showing {filtered.length} tenders · Generated 23-Apr-2026 09:42 IST</span>
       </div>
 
       {/* KPI strip */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: "Total NITs", value: filtered.length, icon: FileText, tone: "text-primary" },
-          { label: "Estimated Value", value: fmtINR(totalValue), icon: Wallet, tone: "text-accent" },
-          { label: "Contracts Awarded", value: awarded.length, icon: BarChart3, tone: "text-success" },
-          { label: "Award Success Rate", value: `${successRate}%`, icon: TrendingUp, tone: "text-info" },
-        ].map((k) => (
-          <div key={k.label} className="rounded-sm border border-border bg-card p-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{k.label}</p>
-              <k.icon className={`h-4 w-4 ${k.tone}`} />
+          { key: "nits",     label: "Total NITs",          value: filtered.length,    icon: FileText,  tone: "text-primary",  border: "border-l-primary", tab: "register" },
+          { key: "value",    label: "Estimated Value",      value: fmtINR(totalValue), icon: Wallet,    tone: "text-accent",   border: "border-l-accent",  tab: "dashboard" },
+          { key: "awarded",  label: "Contracts Awarded",    value: awarded.length,     icon: BarChart3, tone: "text-success",  border: "border-l-success", tab: "register" },
+          { key: "rate",     label: "Award Success Rate",   value: `${successRate}%`,  icon: TrendingUp,tone: "text-info",     border: "border-l-info",    tab: "dashboard" },
+        ].map((k) => {
+          const isActive = activeCard === k.key;
+          return (
+            <div
+              key={k.key}
+              onClick={() => { const next = isActive ? null : k.key; setActiveCard(next); if (next) setActiveTab(k.tab); }}
+              className={`rounded-sm border-l-4 ${k.border} border border-border bg-card p-3 shadow-sm cursor-pointer transition-all hover:shadow-md ${isActive ? "ring-2 ring-primary/30 bg-primary/5" : ""}`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</p>
+                <k.icon className={`h-4 w-4 ${k.tone}`} />
+              </div>
+              <p className={`mt-1 text-xl font-bold ${k.tone}`}>{k.value}</p>
+              {isActive && <p className="text-xs text-muted-foreground mt-1">Click to clear</p>}
             </div>
-            <p className={`mt-1 text-xl font-bold ${k.tone}`}>{k.value}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <Tabs defaultValue="dashboard" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="rounded-sm bg-secondary">
           <TabsTrigger value="dashboard" className="rounded-sm text-xs">Analytics Dashboard</TabsTrigger>
           <TabsTrigger value="standard" className="rounded-sm text-xs">Standard Reports</TabsTrigger>
@@ -258,7 +268,7 @@ export default function Reports() {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-sm border border-border bg-card shadow-sm">
               <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Monthly Procurement Volume</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Monthly Procurement Volume</h3>
               </div>
               <div className="p-3" style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -277,7 +287,7 @@ export default function Reports() {
 
             <div className="rounded-sm border border-border bg-card shadow-sm">
               <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Status Distribution</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Status Distribution</h3>
               </div>
               <div className="p-3" style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -296,11 +306,11 @@ export default function Reports() {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-sm border border-border bg-card shadow-sm">
               <div className="flex items-center justify-between border-b-2 border-accent bg-secondary/60 px-3 py-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-primary">By Category</h3>
-                <button className="text-[11px] text-info hover:underline" onClick={() => downloadCsv(byCategory, "by-category.csv")}>Export</button>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-primary">By Category</h3>
+                <button className="text-xs text-info hover:underline" onClick={() => downloadCsv(byCategory, "by-category.csv")}>Export</button>
               </div>
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Category</th>
                     <th className="px-3 py-2 text-right">NITs</th>
@@ -321,11 +331,11 @@ export default function Reports() {
 
             <div className="rounded-sm border border-border bg-card shadow-sm">
               <div className="flex items-center justify-between border-b-2 border-accent bg-secondary/60 px-3 py-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-primary">By Department</h3>
-                <button className="text-[11px] text-info hover:underline" onClick={() => downloadCsv(byDept, "by-department.csv")}>Export</button>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-primary">By Department</h3>
+                <button className="text-xs text-info hover:underline" onClick={() => downloadCsv(byDept, "by-department.csv")}>Export</button>
               </div>
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Department</th>
                     <th className="px-3 py-2 text-right">NITs</th>
@@ -356,7 +366,7 @@ export default function Reports() {
                   <r.icon className="h-4 w-4 text-accent" />
                 </div>
                 <h4 className="text-sm font-semibold leading-snug text-foreground">{r.title}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{r.desc}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{r.desc}</p>
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="outline" className="h-7 flex-1 gap-1 rounded-sm text-[11px]"
                     onClick={() => downloadCsv(filtered.map((t) => ({ id: t.id, name: t.name, dept: t.department, value: t.estimatedValue, status: t.status })), `${r.id}.csv`)}>
@@ -375,11 +385,11 @@ export default function Reports() {
         <TabsContent value="register">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Detailed Tender Register</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Detailed Tender Register</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">NIT No.</th>
                     <th className="px-3 py-2 text-left">Tender</th>
@@ -393,7 +403,7 @@ export default function Reports() {
                 <tbody className="divide-y divide-border">
                   {filtered.map((t) => (
                     <tr key={t.id} className="hover:bg-secondary/40">
-                      <td className="px-3 py-2 font-mono text-[11px] text-info">{t.id}</td>
+                      <td className="px-3 py-2 text-xs text-info">{t.id}</td>
                       <td className="px-3 py-2 font-medium">{t.name}</td>
                       <td className="px-3 py-2 text-muted-foreground">{t.department}</td>
                       <td className="px-3 py-2 text-muted-foreground">{t.category}</td>
@@ -412,11 +422,11 @@ export default function Reports() {
         <TabsContent value="vendor">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Vendor Performance Matrix</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Vendor Performance Matrix</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Vendor ID</th>
                     <th className="px-3 py-2 text-left">Company</th>
@@ -429,7 +439,7 @@ export default function Reports() {
                 <tbody className="divide-y divide-border">
                   {vendors.map((v) => (
                     <tr key={v.id} className="hover:bg-secondary/40">
-                      <td className="px-3 py-2 font-mono text-[11px] text-info">{v.id}</td>
+                      <td className="px-3 py-2 text-xs text-info">{v.id}</td>
                       <td className="px-3 py-2 font-medium">{v.companyName}</td>
                       <td className="px-3 py-2 text-muted-foreground">{v.category}</td>
                       <td className="px-3 py-2 text-right">{v.completedTenders}</td>
@@ -452,7 +462,7 @@ export default function Reports() {
         </TabsContent>
       </Tabs>
 
-      <p className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground">
+      <p className="mt-4 flex items-center gap-1 text-xs text-muted-foreground">
         <ChevronRight className="h-3 w-3" /> Reports compliant with GFR 2017, CVC Manual on Procurement and AP Financial Code.
       </p>
     </AdminLayout>

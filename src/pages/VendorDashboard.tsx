@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +115,7 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
 export default function VendorDashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const T = useT();
 
@@ -140,6 +141,13 @@ export default function VendorDashboard() {
     document.title = "Vendor Dashboard — AP Tender";
   }, []);
 
+  useEffect(() => {
+    if (searchParams.get("profile") === "open") {
+      setProfileOpen(true);
+      setSearchParams((prev) => { prev.delete("profile"); return prev; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const vendorId = currentUser?.vendorId ?? "";
 
   // ── Live data from API ───────────────────────────────────────────────────────
@@ -154,7 +162,7 @@ export default function VendorDashboard() {
     staleTime: 60_000,
   });
 
-  const { data: tendersData, isLoading: tendersLoading } = useQuery<{ tenders: Tender[] }>({
+  const { data: tendersData, isLoading: tendersLoading, isFetching: tendersFetching } = useQuery<{ tenders: Tender[] }>({
     queryKey: ["vendor-tenders"],
     queryFn: async () => {
       const res = await api.get("/tenders", { params: { limit: 100 } });
@@ -163,7 +171,7 @@ export default function VendorDashboard() {
     staleTime: 30_000,
   });
 
-  const { data: bidsData, isLoading: bidsLoading, refetch: refetchBids } = useQuery<{ bids: Bid[] }>({
+  const { data: bidsData, isLoading: bidsLoading, isFetching: bidsFetching, refetch: refetchBids } = useQuery<{ bids: Bid[] }>({
     queryKey: ["my-bids"],
     queryFn: async () => {
       const res = await api.get("/bids", { params: { limit: 100 } });
@@ -180,7 +188,7 @@ export default function VendorDashboard() {
   });
 
   // ── Real uploaded documents (OCR pipeline) ───────────────────────────────────
-  const { data: myDocsData, isLoading: docsLoading, refetch: refetchDocs } = useDocuments();
+  const { data: myDocsData, isLoading: docsLoading, isFetching: docsFetching, refetch: refetchDocs } = useDocuments();
   const myDocs: ApiVendorDoc[] = myDocsData?.docs ?? [];
 
   async function handleDeleteDoc(docId: string) {
@@ -370,20 +378,6 @@ export default function VendorDashboard() {
         currentUser?.isVerificationPending ? null : (
           <>
             <Button
-              variant="outline" size="sm"
-              className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary"
-              onClick={() => setProfileOpen(true)}
-            >
-              <UserCheck className="h-3.5 w-3.5" /> My Profile
-            </Button>
-            <Button
-              variant="outline" size="sm"
-              className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary"
-              onClick={downloadProfile}
-            >
-              <Download className="h-3.5 w-3.5" /> {T("vd_download_profile")}
-            </Button>
-            <Button
               size="sm"
               className="h-8 gap-1.5 rounded-sm bg-accent text-xs text-accent-foreground hover:bg-accent/90"
               onClick={() => setBidOpen(true)}
@@ -399,9 +393,18 @@ export default function VendorDashboard() {
       <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-6">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <UserCheck className="h-5 w-5 text-primary" /> My Profile
-            </SheetTitle>
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <UserCheck className="h-5 w-5 text-primary" /> My Profile
+              </SheetTitle>
+              <Button
+                variant="outline" size="sm"
+                className="h-8 gap-1.5 rounded-sm border-primary/40 text-xs text-primary hover:bg-secondary shrink-0"
+                onClick={downloadProfile}
+              >
+                <Download className="h-3.5 w-3.5" /> {T("vd_download_profile")}
+              </Button>
+            </div>
           </SheetHeader>
 
           {/* Company identity */}
@@ -421,7 +424,7 @@ export default function VendorDashboard() {
           <Separator className="mb-5" />
 
           {/* Registration details grid */}
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Company Details</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Company Details</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             {[
               { label: "Company Name",   value: vendor.companyName },
@@ -435,7 +438,7 @@ export default function VendorDashboard() {
               { label: "Vendor ID",      value: vendor.id, mono: true },
             ].map(({ label, value, mono }) => (
               <div key={label} className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{label}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{label}</p>
                 <p className={`text-sm font-medium text-foreground ${mono ? "font-mono" : ""}`}>{value}</p>
               </div>
             ))}
@@ -444,15 +447,15 @@ export default function VendorDashboard() {
           <Separator className="mb-5" />
 
           {/* Performance */}
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Performance</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Performance</p>
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Past Performance Score</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Past Performance Score</p>
               <p className="text-2xl font-bold text-primary">{vendor.pastPerformance}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
               <Progress value={vendor.pastPerformance} className="h-1.5 mt-2" />
             </div>
             <div className="rounded-sm border border-border bg-secondary/30 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Completed Tenders</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Completed Tenders</p>
               <p className="text-2xl font-bold text-primary">{vendor.completedTenders}</p>
               <p className="text-xs text-muted-foreground mt-1">Successfully delivered</p>
             </div>
@@ -461,7 +464,7 @@ export default function VendorDashboard() {
           <Separator className="mb-5" />
 
           {/* Uploaded documents */}
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
             Uploaded Documents <span className="font-normal">({myDocs.length})</span>
           </p>
           {myDocs.length === 0 ? (
@@ -481,16 +484,16 @@ export default function VendorDashboard() {
                     <FileCheck2 className="h-5 w-5 shrink-0 text-primary/60" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{doc.originalName}</p>
-                      <p className="text-[10px] text-muted-foreground">{DOC_TYPE_LABELS[doc.docType]} · {(doc.fileSize / 1024).toFixed(0)} KB · {new Date(doc.createdAt).toLocaleDateString("en-IN")}</p>
+                      <p className="text-xs text-muted-foreground">{DOC_TYPE_LABELS[doc.docType]} · {(doc.fileSize / 1024).toFixed(0)} KB · {new Date(doc.createdAt).toLocaleDateString("en-IN")}</p>
                     </div>
                     <div className="shrink-0 text-right space-y-1">
                       {rating && (
-                        <span className={`inline-block rounded-sm px-2 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                        <span className={`inline-block rounded-sm px-2 py-0.5 text-xs font-bold border ${rating.bg} ${rating.color}`}>
                           {v!.aiScore} · {rating.label}
                         </span>
                       )}
                       {statusCfg && (
-                        <p className={`text-[10px] font-semibold ${statusCfg.color}`}>{statusCfg.label}</p>
+                        <p className={`text-xs font-semibold ${statusCfg.color}`}>{statusCfg.label}</p>
                       )}
                     </div>
                   </div>
@@ -682,7 +685,7 @@ export default function VendorDashboard() {
               </div>
 
               {/* Key details grid */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-sm border border-border bg-secondary/30 p-4 text-xs">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-sm border border-border bg-secondary/30 p-4 text-sm">
                 {[
                   ["Department",        tenderDetail.department],
                   ["Category",          tenderDetail.category],
@@ -723,23 +726,19 @@ export default function VendorDashboard() {
                           variant="outline"
                           className="h-6 shrink-0 gap-1 rounded-sm px-2 text-[10px]"
                           onClick={() => {
-                            const content = doc.url
-                              ? undefined
-                              : `Tender Document: ${doc.name}\nTender: ${tenderDetail.name} (${tenderDetail.id})\nDepartment: ${tenderDetail.department}\nFile Size: ${doc.size || "—"}\n\nThis document is part of the AP e-Procurement tender notice.\nReference: ${tenderDetail.id}\nIssued by: ${tenderDetail.department}\nDate: ${new Date().toLocaleDateString("en-IN")}`;
                             if (doc.url) {
-                              const a = document.createElement("a");
-                              a.href = doc.url;
-                              a.download = doc.name;
-                              a.target = "_blank";
-                              a.click();
+                              window.open(doc.url, "_blank", "noopener,noreferrer");
                             } else {
-                              const blob = new Blob([content!], { type: "text/plain" });
-                              const url = URL.createObjectURL(blob);
+                              const content = `Tender Document: ${doc.name}\nTender: ${tenderDetail.name} (${tenderDetail.id})\nDepartment: ${tenderDetail.department}\nFile Size: ${doc.size || "—"}\n\nThis document is part of the AP e-Procurement tender notice.\nReference: ${tenderDetail.id}\nIssued by: ${tenderDetail.department}\nDate: ${new Date().toLocaleDateString("en-IN")}`;
+                              const blob = new Blob([content], { type: "text/plain" });
+                              const blobUrl = URL.createObjectURL(blob);
                               const a = document.createElement("a");
-                              a.href = url;
-                              a.download = doc.name.replace(/\s+/g, "_") + ".txt";
+                              a.href = blobUrl;
+                              a.download = doc.name;
+                              document.body.appendChild(a);
                               a.click();
-                              URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                              setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
                             }
                           }}
                         >
@@ -795,7 +794,7 @@ export default function VendorDashboard() {
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2 shadow-sm ring-4 ring-background ${stepStyle(n)}`}>
                     {icon}
                   </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wide ${stepTextStyle(n)}`}>{label}</span>
+                  <span className={`text-xs font-bold uppercase tracking-wide ${stepTextStyle(n)}`}>{label}</span>
                 </div>
               ))}
             </div>
@@ -876,7 +875,7 @@ export default function VendorDashboard() {
                       </Badge>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs">
+                  <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm">
                     <p className="flex justify-between"><span className="text-muted-foreground">Contact</span><span className="font-medium truncate ml-2">{vendor.contactPerson}</span></p>
                     <p className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{vendor.category}</span></p>
                     <p className="flex justify-between"><span className="text-muted-foreground">GST No.</span><span className="font-medium font-mono">{vendor.gst || "—"}</span></p>
@@ -920,7 +919,7 @@ export default function VendorDashboard() {
               </div>
               <div className="divide-y divide-border">
                 {documents.map((d) => (
-                  <div key={d.name} className="flex items-center justify-between gap-3 p-3 text-xs">
+                  <div key={d.name} className="flex items-center justify-between gap-3 p-3 text-sm">
                     <div>
                       <p className="font-semibold text-foreground">{d.name}</p>
                       <p className="text-muted-foreground">Valid till: {d.validTill}</p>
@@ -961,9 +960,9 @@ export default function VendorDashboard() {
                     }}
                     className={`rounded-sm border-l-4 ${color} p-4 cursor-pointer transition-all hover:shadow-md ${isActive ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
                   >
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
                     <p className={`text-2xl font-bold ${text}`}>{value}</p>
-                    <p className="text-xs text-muted-foreground">{isActive ? "Click to clear filter" : sub}</p>
+                    <p className="text-sm text-muted-foreground">{isActive ? "Click to clear filter" : sub}</p>
                   </Card>
                 );
               })}
@@ -976,8 +975,8 @@ export default function VendorDashboard() {
                   <FileText className="h-4 w-4" /> {T("vd_eligible_tenders")}
                   {!tendersLoading && <span className="text-xs font-normal text-muted-foreground">({eligibleTenders.length})</span>}
                 </h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => qc.invalidateQueries({ queryKey: ["vendor-tenders"] })}>
-                  <RefreshCw className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={tendersFetching} onClick={() => qc.invalidateQueries({ queryKey: ["vendor-tenders"] })}>
+                  <RefreshCw className={`h-3.5 w-3.5 ${tendersFetching ? "animate-spin" : ""}`} />
                 </Button>
               </div>
               <div className="overflow-x-auto">
@@ -1014,13 +1013,13 @@ export default function VendorDashboard() {
                           className="border-border/60 cursor-pointer hover:bg-secondary/40 transition-colors"
                           onClick={() => openDetail(t.id)}
                         >
-                          <TableCell className="pl-4 font-mono text-xs text-primary">{t.id}</TableCell>
+                          <TableCell className="pl-4 text-sm text-primary">{t.id}</TableCell>
                           <TableCell>
-                            <p className="max-w-[260px] truncate text-xs font-medium">{t.name}</p>
+                            <p className="max-w-[260px] truncate text-sm font-medium">{t.name}</p>
                           </TableCell>
-                          <TableCell className="text-xs">{t.department}</TableCell>
-                          <TableCell className="text-xs font-semibold tabular-nums">{fmtINR(t.estimatedValue)}</TableCell>
-                          <TableCell className="text-xs">
+                          <TableCell className="text-sm">{t.department}</TableCell>
+                          <TableCell className="text-sm font-semibold tabular-nums">{fmtINR(t.estimatedValue)}</TableCell>
+                          <TableCell className="text-sm">
                             <CalendarClock className="mr-1 inline h-3 w-3 text-warning" />
                             {fmtDate(t.endDate)}
                           </TableCell>
@@ -1042,8 +1041,8 @@ export default function VendorDashboard() {
                   <TrendingUp className="h-4 w-4" /> {T("vd_bid_history")}
                   {!bidsLoading && <span className="text-xs font-normal text-muted-foreground">({enrichedBids.length} bids)</span>}
                 </h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetchBids()}>
-                  <RefreshCw className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={bidsFetching} onClick={() => refetchBids()}>
+                  <RefreshCw className={`h-3.5 w-3.5 ${bidsFetching ? "animate-spin" : ""}`} />
                 </Button>
               </div>
               <div className="overflow-x-auto">
@@ -1073,13 +1072,13 @@ export default function VendorDashboard() {
                           className="border-border/60 cursor-pointer hover:bg-secondary/40 transition-colors"
                           onClick={() => openDetail(b.tenderId)}
                         >
-                          <TableCell className="pl-4 font-mono text-xs">{b.tenderId}</TableCell>
-                          <TableCell className="max-w-[220px] truncate text-xs">{b.tenderName}</TableCell>
-                          <TableCell className="text-xs font-semibold tabular-nums">
+                          <TableCell className="pl-4 text-sm">{b.tenderId}</TableCell>
+                          <TableCell className="max-w-[220px] truncate text-sm">{b.tenderName}</TableCell>
+                          <TableCell className="text-sm font-semibold tabular-nums">
                             <Wallet className="mr-1 inline h-3 w-3 text-accent" />
                             {fmtINR(b.amount)}
                           </TableCell>
-                          <TableCell className="text-xs">{fmtDate(b.submittedAt)}</TableCell>
+                          <TableCell className="text-sm">{fmtDate(b.submittedAt)}</TableCell>
                           <TableCell><BidStatusBadge status={b.status} /></TableCell>
                         </TableRow>
                       ))
@@ -1097,8 +1096,8 @@ export default function VendorDashboard() {
                   {!docsLoading && <span className="text-xs font-normal text-muted-foreground">({myDocs.length})</span>}
                 </h3>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetchDocs()}>
-                    <RefreshCw className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={docsFetching} onClick={() => refetchDocs()}>
+                    <RefreshCw className={`h-3.5 w-3.5 ${docsFetching ? "animate-spin" : ""}`} />
                   </Button>
                   <Button variant="outline" size="sm" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => setUploadDocOpen(true)}>
                     <Upload className="h-3 w-3" /> Upload Document
@@ -1146,9 +1145,9 @@ export default function VendorDashboard() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-secondary/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border bg-secondary/30 text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="px-4 py-2.5 text-left">File</th>
                         <th className="px-4 py-2.5 text-left">Type</th>
                         <th className="px-4 py-2.5 text-left">OCR / AI Score</th>
@@ -1173,27 +1172,27 @@ export default function VendorDashboard() {
                           <tr key={doc.id} className="hover:bg-secondary/40 transition-colors cursor-pointer" onClick={() => setSelectedApiDoc(doc)}>
                             <td className="px-4 py-3">
                               <p className="font-medium text-foreground max-w-[180px] truncate">{doc.originalName}</p>
-                              <p className="text-muted-foreground text-[10px]">{(doc.fileSize / 1024).toFixed(0)} KB</p>
+                              <p className="text-muted-foreground text-xs">{(doc.fileSize / 1024).toFixed(0)} KB</p>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">{DOC_TYPE_LABELS[doc.docType] || doc.docType}</td>
                             <td className="px-4 py-3">
                               {rating ? (
-                                <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[10px] font-bold border ${rating.bg} ${rating.color}`}>
+                                <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-bold border ${rating.bg} ${rating.color}`}>
                                   {v!.aiScore} · {rating.label}
                                   {v!.aiFlagged && <AlertTriangle className="h-3 w-3 ml-1" />}
                                 </span>
                               ) : isProcessing ? (
-                                <span className="flex items-center gap-1 text-[10px] text-info">
+                                <span className="flex items-center gap-1 text-xs text-info">
                                   <Brain className="h-3 w-3 animate-pulse" /> OCR running…
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Clock className="h-3 w-3" /> Queued
                                 </span>
                               )}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`text-[10px] font-semibold ${statusCfg?.color ?? "text-muted-foreground"}`}>
+                              <span className={`text-xs font-semibold ${statusCfg?.color ?? "text-muted-foreground"}`}>
                                 {statusCfg?.label ?? "Processing"}
                               </span>
                             </td>

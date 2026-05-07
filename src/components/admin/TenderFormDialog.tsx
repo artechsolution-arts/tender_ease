@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,9 +7,57 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Paperclip, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, Paperclip, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAdmin, type Tender, type TenderDoc } from "@/store/admin-store";
+
+function DatePickerField({
+  label, value, onChange, disabled, fromDate,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  fromDate?: Date;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = value ? new Date(value + "T00:00:00") : undefined;
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            className={cn(
+              "mt-1 w-full justify-start text-left font-normal h-9 text-sm",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+            {selected ? format(selected, "dd MMM yyyy") : "Pick a date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(date) => {
+              onChange(date ? date.toISOString().slice(0, 10) : "");
+              setOpen(false);
+            }}
+            disabled={fromDate ? { before: fromDate } : undefined}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -185,15 +234,21 @@ export function TenderFormDialog({ open, onOpenChange, tender }: Props) {
             </Select>
           </div>
 
-          <div>
-            <Label className="text-xs">Start Date *</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={!!locked} />
-          </div>
+          <DatePickerField
+            label="Start Date *"
+            value={startDate}
+            onChange={(v) => { setStartDate(v); if (endDate && v > endDate) setEndDate(""); }}
+            disabled={!!locked}
+            fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
+          />
 
-          <div>
-            <Label className="text-xs">End Date / Deadline *</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={!!locked} />
-          </div>
+          <DatePickerField
+            label="End Date / Deadline *"
+            value={endDate}
+            onChange={setEndDate}
+            disabled={!!locked}
+            fromDate={startDate ? new Date(startDate + "T00:00:00") : new Date(new Date().setHours(0, 0, 0, 0))}
+          />
 
           <div className="md:col-span-2">
             <Label className="text-xs">Estimated Value (₹)</Label>

@@ -43,6 +43,7 @@ const SEV_TONE: Record<Severity, string> = {
 export default function Compliance() {
   const { tenders, vendors } = useAdmin();
   const T = useT();
+  const [activeTab, setActiveTab] = useState("findings");
   const [selected, setSelected] = useState<Finding | null>(null);
   const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
@@ -170,37 +171,63 @@ export default function Compliance() {
     >
       {/* Compliance score banner */}
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <div className="rounded-sm border-2 border-success/40 bg-success/5 p-4 shadow-sm md:col-span-2">
+        {/* Compliance Score → Checklist tab */}
+        <button
+          type="button"
+          className={`rounded-sm border-2 p-4 shadow-sm text-left transition-all hover:shadow-md group ${activeTab === "checklist" ? "border-success bg-success/10" : "border-success/40 bg-success/5 hover:bg-success/10"}`}
+          onClick={() => setActiveTab("checklist")}
+        >
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15 shrink-0">
               <ShieldCheck className="h-6 w-6 text-success" />
             </div>
-            <div className="flex-1">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Overall Compliance Score</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Overall Compliance Score</p>
               <p className="text-2xl font-bold text-success">{compliancePct}%</p>
-              <p className="text-[11px] text-muted-foreground">{okCount} of {checklist.length} CVC checkpoints passed · Last audited 22-Apr-2026</p>
+              <p className="text-xs text-muted-foreground">{okCount} of {checklist.length} CVC checkpoints passed</p>
             </div>
           </div>
-        </div>
-        <div className="rounded-sm border border-border bg-card p-3 shadow-sm">
+          <p className={`mt-2 text-xs font-semibold uppercase tracking-wide ${activeTab === "checklist" ? "text-success" : "text-muted-foreground group-hover:text-success"}`}>
+            {activeTab === "checklist" ? "▶ Viewing Checklist" : "→ View Checklist"}
+          </p>
+        </button>
+
+        {/* Open Findings → Findings tab */}
+        <button
+          type="button"
+          className={`rounded-sm border p-3 shadow-sm text-left transition-all hover:shadow-md group ${activeTab === "findings" ? "border-warning bg-warning/10" : "border-border bg-card hover:bg-warning/5"}`}
+          onClick={() => setActiveTab("findings")}
+        >
           <div className="flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Open Findings</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Open Findings</p>
             <AlertTriangle className="h-4 w-4 text-warning" />
           </div>
           <p className="mt-1 text-2xl font-bold text-warning">{findings.filter((f) => f.status !== "Resolved").length}</p>
-          <p className="text-[11px] text-muted-foreground">{findings.filter((f) => f.severity === "high").length} high severity</p>
-        </div>
-        <div className="rounded-sm border border-border bg-card p-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">{findings.filter((f) => f.severity === "high").length} high severity</p>
+          <p className={`mt-1 text-xs font-semibold uppercase tracking-wide ${activeTab === "findings" ? "text-warning" : "text-muted-foreground group-hover:text-warning"}`}>
+            {activeTab === "findings" ? "▶ Viewing Findings" : "→ View Findings"}
+          </p>
+        </button>
+
+        {/* Audit Events → Audit tab */}
+        <button
+          type="button"
+          className={`rounded-sm border p-3 shadow-sm text-left transition-all hover:shadow-md group ${activeTab === "audit" ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-primary/5"}`}
+          onClick={() => setActiveTab("audit")}
+        >
           <div className="flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Audit Events (24h)</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Audit Events (24h)</p>
             <Lock className="h-4 w-4 text-primary" />
           </div>
           <p className="mt-1 text-2xl font-bold text-primary">{auditLog.length}</p>
-          <p className="text-[11px] text-muted-foreground">{auditLog.filter((a) => a.outcome === "flagged").length} flagged for review</p>
-        </div>
+          <p className="text-xs text-muted-foreground">{auditLog.filter((a) => a.outcome === "flagged").length} flagged for review</p>
+          <p className={`mt-1 text-xs font-semibold uppercase tracking-wide ${activeTab === "audit" ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`}>
+            {activeTab === "audit" ? "▶ Viewing Audit Trail" : "→ View Audit Trail"}
+          </p>
+        </button>
       </div>
 
-      <Tabs defaultValue="findings" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="rounded-sm bg-secondary">
           <TabsTrigger value="findings" className="rounded-sm text-xs">CVC Findings</TabsTrigger>
           <TabsTrigger value="checklist" className="rounded-sm text-xs">Compliance Checklist</TabsTrigger>
@@ -213,15 +240,15 @@ export default function Compliance() {
         <TabsContent value="findings">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between gap-2 border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Vigilance Findings & Risk Register</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Vigilance Findings & Risk Register</h3>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search findings…" className="h-7 w-56 rounded-sm border border-input bg-background pl-7 pr-2 text-xs outline-none focus:ring-1 focus:ring-ring" />
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Ref. ID</th>
                     <th className="px-3 py-2 text-left">Tender</th>
@@ -235,8 +262,8 @@ export default function Compliance() {
                 <tbody className="divide-y divide-border">
                   {filtered.map((f) => (
                     <tr key={f.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelected(f)}>
-                      <td className="px-3 py-2 font-mono text-[11px] text-info">{f.id}</td>
-                      <td className="px-3 py-2 font-mono text-[11px]">{f.tenderId}</td>
+                      <td className="px-3 py-2 text-xs text-info">{f.id}</td>
+                      <td className="px-3 py-2 text-xs">{f.tenderId}</td>
                       <td className="px-3 py-2 font-medium">{f.category}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${SEV_TONE[f.severity]}`}>
@@ -266,7 +293,7 @@ export default function Compliance() {
         <TabsContent value="checklist">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Pre-Award Compliance Checklist (CVC + GFR)</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Pre-Award Compliance Checklist (CVC + GFR)</h3>
             </div>
             <ul className="divide-y divide-border">
               {checklist.map((c, i) => (
@@ -275,8 +302,8 @@ export default function Compliance() {
                     ? <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-success" />
                     : <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />}
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-foreground">{c.item}</p>
-                    <p className="text-[10px] text-muted-foreground">Ref: {c.ref}</p>
+                    <p className="text-sm font-medium text-foreground">{c.item}</p>
+                    <p className="text-xs text-muted-foreground">Ref: {c.ref}</p>
                   </div>
                   <Badge variant={c.status === "ok" ? "secondary" : "outline"} className={`rounded-sm text-[10px] ${c.status === "warn" ? "border-warning/40 text-warning" : ""}`}>
                     {c.status === "ok" ? "Compliant" : "Needs Attention"}
@@ -291,11 +318,11 @@ export default function Compliance() {
         <TabsContent value="audit">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Immutable Audit Trail (DSC-Signed)</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Immutable Audit Trail (DSC-Signed)</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Event ID</th>
                     <th className="px-3 py-2 text-left">Timestamp (IST)</th>
@@ -306,7 +333,7 @@ export default function Compliance() {
                     <th className="px-3 py-2 text-left">Outcome</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border font-mono text-[11px]">
+                <tbody className="divide-y divide-border text-xs">
                   {auditLog.map((a) => (
                     <tr key={a.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelectedAudit(a)}>
                       <td className="px-3 py-2 text-info">{a.id}</td>
@@ -335,9 +362,9 @@ export default function Compliance() {
               <div key={p.title} className="rounded-sm border border-border bg-card p-4 shadow-sm transition hover:border-accent">
                 <BookOpen className="mb-2 h-5 w-5 text-accent" />
                 <h4 className="text-sm font-semibold leading-snug text-foreground">{p.title}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{p.desc}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">PDF · {p.size}</span>
+                  <span className="text-xs text-muted-foreground">PDF · {p.size}</span>
                   <Button size="sm" variant="outline" className="h-7 gap-1 rounded-sm text-[11px]" onClick={() => handlePolicyDownload(p)}>
                     <Download className="h-3 w-3" /> Download
                   </Button>
@@ -351,11 +378,11 @@ export default function Compliance() {
         <TabsContent value="vendors">
           <div className="rounded-sm border border-border bg-card shadow-sm">
             <div className="border-b-2 border-accent bg-secondary/60 px-3 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-primary">Vendor Blacklist & Debarment Register</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Vendor Blacklist & Debarment Register</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Vendor ID</th>
                     <th className="px-3 py-2 text-left">Company</th>
@@ -368,16 +395,16 @@ export default function Compliance() {
                 <tbody className="divide-y divide-border">
                   {vendors.filter((v) => v.blacklisted).map((v) => (
                     <tr key={v.id} className="cursor-pointer hover:bg-secondary/60 transition-colors" onClick={() => setSelectedVendorId(v.id)}>
-                      <td className="px-3 py-2 font-mono text-[11px] text-info">{v.id}</td>
+                      <td className="px-3 py-2 text-xs text-info">{v.id}</td>
                       <td className="px-3 py-2 font-medium">{v.companyName}</td>
-                      <td className="px-3 py-2 font-mono text-[11px]">{v.pan}</td>
+                      <td className="px-3 py-2 text-xs">{v.pan}</td>
                       <td className="px-3 py-2 text-muted-foreground">{v.category}</td>
                       <td className="px-3 py-2"><Badge variant="destructive" className="rounded-sm text-[10px]">Debarred · 3 yrs</Badge></td>
                       <td className="px-3 py-2 text-muted-foreground">Substandard supply, EMD forfeiture upheld by RB Dept.</td>
                     </tr>
                   ))}
                   {vendors.filter((v) => v.blacklisted).length === 0 && (
-                    <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">No active blacklisting on record.</td></tr>
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">No active blacklisting on record.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -396,7 +423,7 @@ export default function Compliance() {
           </DialogHeader>
           {selectedAudit && (
             <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   ["Event ID", selectedAudit.id],
                   ["Timestamp (IST)", selectedAudit.timestamp],
@@ -406,8 +433,8 @@ export default function Compliance() {
                   ["IP Address", selectedAudit.ip],
                 ].map(([label, val]) => (
                   <div key={label} className="rounded-sm border border-border bg-card p-2.5">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                    <p className="mt-0.5 font-mono font-semibold text-foreground">{val}</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className="mt-0.5 font-semibold text-foreground">{val}</p>
                   </div>
                 ))}
               </div>
@@ -416,7 +443,7 @@ export default function Compliance() {
                   ? <><AlertOctagon className="h-4 w-4" /> Outcome: Flagged for review</>
                   : <><CheckCircle2 className="h-4 w-4" /> Outcome: Successful</>}
               </div>
-              <p className="text-[11px] text-muted-foreground italic">This record is part of the immutable DSC-signed audit trail. It cannot be edited or deleted.</p>
+              <p className="text-xs text-muted-foreground italic">This record is part of the immutable DSC-signed audit trail. It cannot be edited or deleted.</p>
             </div>
           )}
         </DialogContent>
@@ -435,7 +462,7 @@ export default function Compliance() {
                     <AlertOctagon className="h-4 w-4" /> Debarred Vendor · {v.id}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-3 text-xs">
+                <div className="space-y-3 text-sm">
                   <div className="rounded-sm border border-destructive/30 bg-destructive/5 p-3">
                     <div className="flex items-center gap-2">
                       <Building2 className="h-5 w-5 text-destructive" />
@@ -455,17 +482,17 @@ export default function Compliance() {
                       ["Tenders Completed", String(v.completedTenders)],
                     ].map(([label, val]) => (
                       <div key={label} className="rounded-sm border border-border bg-card p-2.5">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                        <p className="mt-0.5 font-mono font-semibold text-foreground">{val}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <p className="mt-0.5 font-semibold text-foreground">{val}</p>
                       </div>
                     ))}
                   </div>
                   <Separator />
                   <div className="rounded-sm border border-destructive/20 bg-secondary/40 p-3">
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-destructive">Debarment Record</p>
-                    <p className="text-xs"><span className="font-semibold">Status:</span> Debarred · 3 years</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Reason: Substandard supply, EMD forfeiture upheld by RB Department.</p>
-                    <p className="mt-1 text-xs text-muted-foreground">This vendor is barred from participation in any AP Government procurement. All bids from this entity must be summarily rejected.</p>
+                    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-destructive">Debarment Record</p>
+                    <p className="text-sm"><span className="font-semibold">Status:</span> Debarred · 3 years</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Reason: Substandard supply, EMD forfeiture upheld by RB Department.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">This vendor is barred from participation in any AP Government procurement. All bids from this entity must be summarily rejected.</p>
                   </div>
                 </div>
               </>
@@ -484,21 +511,21 @@ export default function Compliance() {
           </DialogHeader>
           {selected && (
             <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div><p className="text-muted-foreground">Tender</p><p className="font-mono font-semibold">{selected.tenderId}</p></div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-muted-foreground">Tender</p><p className="font-semibold">{selected.tenderId}</p></div>
                 <div><p className="text-muted-foreground">Raised on</p><p className="font-semibold">{fmtDate(selected.raisedOn)}</p></div>
                 <div><p className="text-muted-foreground">Severity</p>
-                  <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${SEV_TONE[selected.severity]}`}>{selected.severity}</span>
+                  <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-xs font-semibold uppercase ${SEV_TONE[selected.severity]}`}>{selected.severity}</span>
                 </div>
                 <div><p className="text-muted-foreground">Status</p><p className="font-semibold">{selected.status}</p></div>
               </div>
               <div className="rounded-sm border border-border bg-secondary/40 p-3">
-                <p className="mb-1 text-[11px] font-bold uppercase text-primary">Observation</p>
-                <p className="text-xs leading-relaxed">{selected.observation}</p>
+                <p className="mb-1 text-xs font-bold uppercase text-primary">Observation</p>
+                <p className="text-sm leading-relaxed">{selected.observation}</p>
               </div>
               <div className="rounded-sm border border-accent/40 bg-accent/5 p-3">
-                <p className="mb-1 text-[11px] font-bold uppercase text-accent">Recommended Action</p>
-                <p className="text-xs leading-relaxed">{selected.action}</p>
+                <p className="mb-1 text-xs font-bold uppercase text-accent">Recommended Action</p>
+                <p className="text-sm leading-relaxed">{selected.action}</p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" size="sm" className="h-8 rounded-sm text-xs" onClick={() => setSelected(null)}>Close</Button>
