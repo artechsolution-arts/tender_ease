@@ -9,6 +9,59 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.core.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, FRONTEND_URL
 
+# AP Government emblem — embedded as base64 so no external URL dependency
+_AP_LOGO_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAEcAAABQCAMAAAB8vZgOAAAC9FBMVEVHcEwAaEABaEABaEABaEAB"
+    "aEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaUABaEAAaUECaUEBaUABaEABaEAB"
+    "aEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEAB"
+    "aEAAaEAAaEABaEABaEABaEABaEABaEABaEABaEABaEABaEABaEBWTDXhHiPjHiTiHSPiHCLiGiDj"
+    "IynjICbkKS/kJizlLjPlMjjmNzznPEHnQEXjHSPuen7oREnsZ2zqVVnvgoXpTFDqWl7udHfpUFXt"
+    "bXHwiIvxj5LoSE31sLL2trj3wsT+///+/v7+/f39+fr+/Pz99vb98vP63d775+j74uP87+/2vL74"
+    "yMr86+z4zs/519j509T0qazzo6bylZjznqHrXmLrYmbympziHyPlHCPiHiPiHyPhHCLhHiPiHSPh"
+    "HCLhHSLiHSPiHSLiHiPiHSOoMSvIJid/PzAOZD/iHSM/VDgZYD3tXxYrWzv1kQvoPB35qgbiHSPh"
+    "HSPjHSJBUzh2QTH1lwmRoBuQmh2qqxVPhywNbT01fTMZcjo+gTEhdTiwrRNajCnjwQaSoRvNuQx0"
+    "liPyxgP9ywD/zQD9ywD9ywD9ywD+ywD9ywD9ywD+ywD9ywD+ywD+ywD+ywD+ywD+ywD+ywD+ywD+"
+    "ywD+ywD+ywD+zAD+zAD+zAD+zAD+zAD9ywD9ywD+ywD9ywD+ywD9ywD9ywD9ywD9ywD9ywD9ywD9"
+    "ywD8ywD7ygD8ywD8ywD8ygD7ygD6xQH8ygD5vwPxsAb5vgP3vAP3vgMAZz8AaD8AZz8BaEABaEAB"
+    "aEAAZz8AZz8AaEABaEAAaEAAZz8AaEAAaEAAZz8AZz8AZj8AaEAAaEAAZz8AZz8BaEAAaEAAaEAA"
+    "aEAAaEAAZz8AZz8AZz8AZj8AZz8AaEAAZz8AZj8AZj4AZz8AZT4AZj4AZD0AZj4ycDTl8xjKAAAA"
+    "/HRSTlMAcX1jv7x51sfN0LXe5Ofy9Pn++//////3/e/s/uHp09ixysTbuYpfdaGqraSnT1iBkJuN"
+    "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"
+)
+
 
 # ── Core helpers ───────────────────────────────────────────────────────────────
 
@@ -78,6 +131,15 @@ def _wrap(inner_html: str) -> str:
 
       {inner_html}
 
+      <!-- ── WATERMARK STAMP ── -->
+      <tr>
+        <td style="padding:20px 32px 8px;text-align:center;">
+          <img src="data:image/png;base64,{_AP_LOGO_B64}"
+               width="64" height="70" alt="Government of Andhra Pradesh"
+               style="display:inline-block;border:0;opacity:0.07;filter:grayscale(100%);"/>
+        </td>
+      </tr>
+
       <!-- ── FOOTER ── -->
       <tr>
         <td style="background-color:#0f2744;padding:26px 32px 20px;">
@@ -136,25 +198,38 @@ def _wrap(inner_html: str) -> str:
 
 
 def _gov_header() -> str:
-    """Top government identity bar — appears on every email."""
-    return """
+    """Top government identity bar with AP emblem watermark — appears on every email."""
+    return f"""
       <!-- Gov identity strip -->
       <tr>
-        <td style="background-color:#f0f4f8;border-bottom:1px solid #d0dae6;
-                   padding:10px 32px;">
+        <td style="background-color:#f0f4f8;border-bottom:2px solid #0f2744;
+                   padding:12px 32px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
-              <td>
-                <p style="margin:0;font-size:11px;color:#7a8fa8;letter-spacing:0.3px;">
-                  &#x1F1EE;&#x1F1F3; &nbsp;भारत सरकार &nbsp;|&nbsp; Government of India
+              <td width="72" valign="middle" style="padding-right:16px;">
+                <img src="data:image/png;base64,{_AP_LOGO_B64}"
+                     width="56" height="62" alt="AP Govt Emblem"
+                     style="display:block;border:0;"/>
+              </td>
+              <td valign="middle">
+                <p style="margin:0;font-size:11px;font-weight:600;
+                           color:#4a6080;letter-spacing:0.4px;
+                           text-transform:uppercase;">
+                  Government of Andhra Pradesh
                 </p>
-                <p style="margin:2px 0 0;font-size:13px;font-weight:700;
+                <p style="margin:3px 0 0;font-size:14px;font-weight:700;
                            color:#0f2744;letter-spacing:0.3px;">
-                  Government of Andhra Pradesh &mdash; AP Tender e-Procurement Portal
+                  AP Tender e-Procurement Portal
+                </p>
+                <p style="margin:2px 0 0;font-size:10.5px;color:#7a8fa8;
+                           letter-spacing:0.2px;">
+                  Department of e-Governance &amp; IT &nbsp;&middot;&nbsp; Amaravati, Andhra Pradesh
                 </p>
               </td>
-              <td align="right" style="font-size:11px;color:#7a8fa8;white-space:nowrap;">
-                सत्यमेव जयते
+              <td align="right" valign="middle" style="padding-left:12px;">
+                <img src="data:image/png;base64,{_AP_LOGO_B64}"
+                     width="40" height="44" alt=""
+                     style="display:block;border:0;opacity:0.08;"/>
               </td>
             </tr>
           </table>
