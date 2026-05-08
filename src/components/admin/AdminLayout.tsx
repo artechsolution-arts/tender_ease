@@ -190,124 +190,108 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
         </div>
       </div>
 
-      {/* Masthead — custom banner image */}
-      <header
-        className="relative overflow-hidden"
-        style={{
-          backgroundImage: "url('/header-bg.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "left top",
-          backgroundRepeat: "no-repeat",
-          minHeight: 220,
-        }}
-      >
-        {/* Invisible h1 for accessibility — image carries the visual title */}
+      {/* Masthead — full-width banner, no cropping */}
+      <header className="relative overflow-hidden">
+
+        {/* Invisible h1 for screen readers — image carries the visual title */}
         <h1 className="sr-only">{t(lang, "govt_ap_full")}</h1>
 
-        {/* Dark scrim on the right so the user card stays readable */}
+        {/* Banner image — 100% width, height auto → never crops */}
+        <img
+          src="/header-bg.png"
+          alt="AP e-Procurement Portal — Government of Andhra Pradesh"
+          className="block w-full"
+          style={{ height: "auto", display: "block" }}
+        />
+
+        {/* Dark scrim on the right third so the user card is readable */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 right-0"
           style={{
-            width: "38%",
-            background:
-              "linear-gradient(to left, rgba(6,18,40,0.72) 0%, transparent 100%)",
+            width: "36%",
+            background: "linear-gradient(to left, rgba(4,14,34,0.70) 0%, transparent 100%)",
           }}
         />
 
-        {/* Main content row — spacer left, controls right */}
-        <div
-          className="relative z-10 flex items-end justify-end gap-3 px-4 py-5 md:px-8"
-          style={{ minHeight: 220 }}
-        >
-          {/* Right — user card + actions */}
-          <div className="hidden items-center gap-3 md:flex">
-            <div
-              className="rounded px-3 py-2 text-right"
-              style={{
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                backdropFilter: "blur(6px)",
-              }}
-            >
-              <p className="text-[11px] uppercase tracking-wide text-white/55">
-                {t(lang, "logged_in_as")}
-              </p>
-              <p className="text-sm font-semibold text-white">
-                {currentUser?.name ?? "Guest User"}
-              </p>
-              <p className="text-[11px] text-white/55">
-                {currentUser?.organization ?? "AP e-Procurement"}
-              </p>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative hover:bg-white/10"
-                  style={{ color: "rgba(255,255,255,0.85)" }}
-                  aria-label={t(lang, "notifications")}
-                >
-                  <Bell className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  <span>{t(lang, "notifications")}</span>
-                  <button className="text-[11px] font-normal text-info hover:underline" onClick={markAllRead}>{t(lang, "mark_all_read")}</button>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="max-h-80 overflow-y-auto">
-                  {visibleNotifications.slice(0, 8).map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 py-2" onClick={() => markRead(n.id)}>
-                      <div className="flex w-full items-center justify-between">
-                        <span className={`text-xs ${n.read ? "font-normal text-muted-foreground" : "font-semibold text-foreground"}`}>{n.title}</span>
-                        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
-                      </div>
-                      <span className="text-[11px] text-muted-foreground line-clamp-2">{n.body}</span>
-                      <span className="text-[10px] text-muted-foreground">{fmtDateTime(n.createdAt)}</span>
-                    </DropdownMenuItem>
-                  ))}
-                  {visibleNotifications.length === 0 && (
-                    <p className="px-3 py-6 text-center text-xs text-muted-foreground">{t(lang, "no_notifications")}</p>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/notifications" className="text-xs text-info">{t(lang, "view_all_notifications")}</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-white/10"
-              style={{ color: "rgba(255,255,255,0.85)" }}
-              aria-label={t(lang, "logout")}
-              onClick={() => setShowLogoutConfirm(true)}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+        {/* User card + actions — anchored to bottom-right of the image */}
+        <div className="absolute bottom-4 right-4 z-10 hidden items-center gap-3 md:flex md:right-8">
+          <div
+            className="rounded px-3 py-2 text-right"
+            style={{
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.22)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-wide text-white/60">
+              {t(lang, "logged_in_as")}
+            </p>
+            <p className="text-sm font-semibold text-white">
+              {currentUser?.name ?? "Guest User"}
+            </p>
+            <p className="text-[11px] text-white/60">
+              {currentUser?.organization ?? "AP e-Procurement"}
+            </p>
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.90)" }}
+                aria-label={t(lang, "notifications")}
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>{t(lang, "notifications")}</span>
+                <button className="text-[11px] font-normal text-info hover:underline" onClick={markAllRead}>{t(lang, "mark_all_read")}</button>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="max-h-80 overflow-y-auto">
+                {visibleNotifications.slice(0, 8).map((n) => (
+                  <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 py-2" onClick={() => markRead(n.id)}>
+                    <div className="flex w-full items-center justify-between">
+                      <span className={`text-xs ${n.read ? "font-normal text-muted-foreground" : "font-semibold text-foreground"}`}>{n.title}</span>
+                      {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground line-clamp-2">{n.body}</span>
+                    <span className="text-[10px] text-muted-foreground">{fmtDateTime(n.createdAt)}</span>
+                  </DropdownMenuItem>
+                ))}
+                {visibleNotifications.length === 0 && (
+                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">{t(lang, "no_notifications")}</p>
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/notifications" className="text-xs text-info">{t(lang, "view_all_notifications")}</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.90)" }}
+            aria-label={t(lang, "logout")}
+            onClick={() => setShowLogoutConfirm(true)}
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Kalamkari-inspired accent stripe at the bottom of the header */}
-        <div
-          aria-hidden="true"
-          style={{
-            height: 5,
-            background:
-              "repeating-linear-gradient(90deg, #f59e0b 0px, #f59e0b 24px, #ffffff 24px, #ffffff 28px, #1565c0 28px, #1565c0 52px, #ffffff 52px, #ffffff 56px, #b91c1c 56px, #b91c1c 80px, #ffffff 80px, #ffffff 84px, #f59e0b 84px)",
-          }}
-        />
       </header>
 
       <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
