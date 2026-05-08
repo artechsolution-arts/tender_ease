@@ -198,7 +198,7 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
 
         {/* Banner image — stretches to fill 155px header exactly */}
         <img
-          src="/header-bg.png"
+          src="/Govt.jpg"
           alt="AP e-Procurement Portal — Government of Andhra Pradesh"
           className="block w-full"
           style={{ height: 155, objectFit: "fill" }}
@@ -209,8 +209,8 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 right-0"
           style={{
-            width: "36%",
-            background: "linear-gradient(to left, rgba(4,14,34,0.70) 0%, transparent 100%)",
+            width: "40%",
+            background: "linear-gradient(to left, rgba(4,14,34,0.88) 0%, rgba(4,14,34,0.40) 70%, transparent 100%)",
           }}
         />
 
@@ -219,18 +219,19 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
           <div
             className="rounded px-3 py-2 text-right"
             style={{
-              background: "rgba(255,255,255,0.12)",
-              border: "1px solid rgba(255,255,255,0.22)",
-              backdropFilter: "blur(8px)",
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.30)",
+              backdropFilter: "blur(10px)",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.40)",
             }}
           >
-            <p className="text-[11px] uppercase tracking-wide text-white/60">
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>
               {t(lang, "logged_in_as")}
             </p>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
               {currentUser?.name ?? "Guest User"}
             </p>
-            <p className="text-[11px] text-white/60">
+            <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.85)" }}>
               {currentUser?.organization ?? "AP e-Procurement"}
             </p>
           </div>
@@ -240,11 +241,16 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.90)" }}
+                className="relative rounded-full"
+                style={{
+                  color: "#ffffff",
+                  background: "rgba(0,0,0,0.40)",
+                  border: "1px solid rgba(255,255,255,0.30)",
+                  backdropFilter: "blur(6px)",
+                }}
                 aria-label={t(lang, "notifications")}
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-5 w-5" style={{ color: "#ffffff", stroke: "#ffffff" }} />
                 {unreadCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
                     {unreadCount}
@@ -283,12 +289,17 @@ export function AdminLayout({ children, title, breadcrumbs, actions }: Props) {
           <Button
             variant="ghost"
             size="icon"
-            className="hover:bg-white/10"
-            style={{ color: "rgba(255,255,255,0.90)" }}
+            className="rounded-full"
+            style={{
+              color: "#ffffff",
+              background: "rgba(0,0,0,0.40)",
+              border: "1px solid rgba(255,255,255,0.30)",
+              backdropFilter: "blur(6px)",
+            }}
             aria-label={t(lang, "logout")}
             onClick={() => setShowLogoutConfirm(true)}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-5 w-5" style={{ color: "#ffffff", stroke: "#ffffff" }} />
           </Button>
         </div>
 

@@ -309,29 +309,13 @@ export default function Login() {
       </div>
 
       {/* ── Header ── */}
-      <header
-        className="w-full"
-        style={{
-          minHeight: 150,
-          background: "linear-gradient(180deg, #003366 0%, #004080 100%)",
-          borderBottom: "4px solid #FF6600",
-        }}
-      >
-        <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-6 px-4 py-4 md:px-8" style={{ minHeight: 150 }}>
-          <div className="flex items-center gap-5">
-            <div className="flex shrink-0 items-center justify-center rounded-full bg-white p-1.5 shadow-lg" style={{ width: 90, height: 90 }}>
-              <img src="/ap-govt-logo.png" alt="AP Govt" className="h-full w-full object-contain" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#FFD700" }}>SATYAMEVA JAYATE</p>
-              <h1 className="text-2xl font-extrabold leading-tight text-white md:text-3xl">Government of Andhra Pradesh</h1>
-              <p className="mt-1 text-sm" style={{ color: "#b3cce6" }}>e-Procurement Portal · AI Tender Management</p>
-            </div>
-          </div>
-          <div className="hidden md:block">
-            <img src="/asset-header.png" alt="AP e-Procurement" className="h-[88px] w-auto object-contain" />
-          </div>
-        </div>
+      <header className="relative w-full overflow-hidden" style={{ height: 155 }}>
+        <img
+          src="/Govt.jpg"
+          alt="AP e-Procurement Portal — Government of Andhra Pradesh"
+          className="block w-full"
+          style={{ height: 155, objectFit: "fill" }}
+        />
       </header>
 
       {/* ── Navbar ── */}
@@ -353,13 +337,19 @@ export default function Login() {
       </nav>
 
       {/* ── Alerts ticker ── */}
-      <div className="border-b border-orange-200 bg-orange-50 px-4 py-1.5">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 text-sm text-orange-700">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-semibold">Important Alerts !</span>
-          <span className="opacity-70">
-            &nbsp;All vendors must ensure DSC certificates are valid before bid submission. Helpdesk: 1800-3070-2232
-          </span>
+      <div className="border-b border-orange-200 bg-orange-50 py-1.5">
+        <div className="flex items-center gap-2 text-sm text-orange-700">
+          {/* Fixed label */}
+          <div className="flex shrink-0 items-center gap-1.5 border-r border-orange-300 pl-4 pr-3">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-semibold whitespace-nowrap">Important Alerts !</span>
+          </div>
+          {/* Scrolling ticker — pauses on hover */}
+          <div className="ticker-container flex-1 overflow-hidden cursor-pointer">
+            <span className="animate-ticker opacity-80">
+              All vendors must ensure DSC certificates are valid before bid submission. Helpdesk: 1800-3070-2232 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All vendors must ensure DSC certificates are valid before bid submission. Helpdesk: 1800-3070-2232
+            </span>
+          </div>
         </div>
       </div>
 
