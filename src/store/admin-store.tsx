@@ -164,7 +164,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
 
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
-      const saved = localStorage.getItem("admin_notifications");
+      const saved = sessionStorage.getItem("admin_notifications");
       return saved ? JSON.parse(saved) : [
         { id: uid("ntf"), title: "Welcome, Officer", body: "Tender Management System ready. Pending: 2 evaluations.", type: "info", audience: "Admin", targetRole: "admin", channels: ["in_app"], createdAt: fmtTime(), read: false },
       ];
@@ -209,10 +209,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   // Re-fetch whenever a token appears (e.g. right after login)
-  const [token, setToken] = useState(() => localStorage.getItem("accessToken"));
+  const [token, setToken] = useState(() => sessionStorage.getItem("accessToken"));
   useEffect(() => {
     const id = setInterval(() => {
-      const t = localStorage.getItem("accessToken");
+      const t = sessionStorage.getItem("accessToken");
       if (t !== token) setToken(t);
     }, 500);
     return () => clearInterval(id);
@@ -221,7 +221,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => { if (token) { fetchVendors(); fetchPending(); fetchTenders(); } }, [token, fetchVendors, fetchPending, fetchTenders]);
 
   useEffect(() => {
-    localStorage.setItem("admin_notifications", JSON.stringify(notifications));
+    sessionStorage.setItem("admin_notifications", JSON.stringify(notifications));
   }, [notifications]);
 
   // ── helpers ────────────────────────────────────────────────────────────────
